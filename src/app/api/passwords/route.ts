@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { getOrCreateDefaultUser } from '@/lib/user-utils';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const view = searchParams.get('view') || 'all';
+    const folderId = searchParams.get('folderId');
+    const companyId = searchParams.get('companyId');
+    
+    // Get or create default user safely
+    const user = await getOrCreateDefaultUser();
+
+    let whereClause: any = {
+      ownerId: user.id,
+      inTrash: false
+    };
+
+    if (view === 'favorites') {
+      whereClause.favorite = true;
+    } else if (view === 'inbox') {
+      // For inbox, we can show passwords that were recently added or shared
+      whereClause.createdAt = {
+        gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+      };
+    } else if (view === 'trash') {
+      whereClause.inTrash = true;
+    }
+
+    // Add folder filtering if folderId is provided
+    if (folderId) {
+      whereClause.folderId = folderId;
+    }
+
+    // Add company filtering if companyId is provided
+    if (companyId) {
+      whereClause.companyId = companyId;
+    }
+
+    const passwords = await db.password.findMany({
+      where: whereClause,
+      include: {
+        folder: true,
+        company: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+
+    const transformedPasswords = passwords.map(password => ({
+      id: password.id,
+      title: password.title,
+      username: password.username,
+      url: password.url,
+      icon: password.icon,
+      favorite: password.favorite,
+      inTrash: password.inTrash,
+      lastAccessed: password.lastAccessed?.toISOString() || 'Только что',
+      company: password.company?.name,
+      folder: password.folder?.name,
+      folderId: password.folder?.id
+    }));
+
+    return NextResponse.json(transformedPasswords);
+  } catch (error) {
+    console.error('Error fetching passwords:', error);
+    return NextResponse.json({ error: 'Failed to fetch passwords' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Get or create default user safely
+    const user = await getOrCreateDefaultUser();
+
+    const { title, username, password, url, notes, icon, favorite, folderId, companyId } = body;
+
+    if (!title || !password) {
+      return NextResponse.json({ error: 'Title and password are required' }, { status: 400 });
+    }
+
+    const newPassword = await db.password.create({
+      data: {
+        title,
+        username,
+        password,
+        url,
+        notes,
+        icon,
+        favorite: favorite || false,
+        inTrash: false,
+        ownerId: user.id,
+        folderId,
+        companyId
+      },
+      include: {
+        folder: true,
+        company: true
+      }
+    });
+
+    const transformedPassword = {
+      id: newPassword.id,
+      title: newPassword.title,
+      username: newPassword.username,
+      url: newPassword.url,
+      icon: newPassword.icon,
+      favorite: newPassword.favorite,
+      inTrash: newPassword.inTrash,
+      lastAccessed: 'Только что',
+      company: newPassword.company?.name,
+      folder: newPassword.folder?.name
+    };
+
+    return NextResponse.json(transformedPassword, { status: 201 });
+  } catch (error) {
+    console.error('Error creating password:', error);
+    return NextResponse.json({ error: 'Failed to create password' }, { status: 500 });
+  }
+}

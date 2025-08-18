@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  avatar        String?
+  role          UserRole  @default(USER)
+  twoFactorSecret String?
+  twoFactorEnabled Boolean @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  passwords     Password[]
+  folders       Folder[]
+  companies     Company[]
+  accesses      Access[]
+  favorites     Favorite[]
+  trashItems    Trash[]
+  sharedWithMe  Access[]  @relation("SharedWithMe")
+  
+  @@map("users")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  logo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  passwords   Password[]
+  folders     Folder[]
+  
+  @@map("companies")
+}
+
+model Folder {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String?
+  icon        String?
+  isExpanded  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  parentId    String?
+  parent      Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children    Folder[] @relation("FolderHierarchy")
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  passwords   Password[]
+  
+  @@map("folders")
+}
+
+model Password {
+  id            String   @id @default(cuid())
+  title         String
+  username      String?
+  password      String   // This will be encrypted
+  url           String?
+  notes         String?
+  icon          String?
+  favorite      Boolean  @default(false)
+  inTrash       Boolean  @default(false)
+  lastAccessed  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  ownerId       String
+  owner         User     @relation(fields: [ownerId], references: [id])
+  folderId      String?
+  folder        Folder?  @relation(fields: [folderId], references: [id])
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id])
+  accesses      Access[]
+  favorites     Favorite[]
+  trashItems    Trash[]
+  
+  @@map("passwords")
+}
+
+model Access {
+  id           String      @id @default(cuid())
+  permission   AccessType
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  passwordId   String
+  password     Password    @relation(fields: [passwordId], references: [id])
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  sharedBy     String
+  sharedByUser User        @relation("SharedWithMe", fields: [sharedBy], references: [id])
+  
+  @@unique([passwordId, userId])
+  @@map("accesses")
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  // Relations
+  passwordId String
+  password   Password @relation(fields: [passwordId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  
+  @@unique([passwordId, userId])
+  @@map("favorites")
+}
+
+model Trash {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+
+  // Relations
+  passwordId String
+  password   Password @relation(fields: [passwordId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  
+  @@unique([passwordId, userId])
+  @@map("trash")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AccessType {
+  READ
+  WRITE
+  ADMIN
+}

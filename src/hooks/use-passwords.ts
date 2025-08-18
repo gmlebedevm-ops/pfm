@@ -1,0 +1,262 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { apiClient } from '@/lib/api-client';
+
+export interface Password {
+  id: string;
+  title: string;
+  username?: string;
+  password?: string;
+  url?: string;
+  icon?: string;
+  favorite: boolean;
+  inTrash?: boolean;
+  lastAccessed?: string;
+  company?: string;
+  folder?: string;
+  folderId?: string;
+  companyId?: string;
+  notes?: string;
+  isEncrypted?: boolean;
+}
+
+export type ViewType = "all" | "favorites" | "inbox" | "trash" | "folders-management" | "account-management" | "companies-management" | "administration" | { type: "folder"; folderId: string; folderName: string } | { type: "company"; companyId: string; companyName: string };
+
+export function usePasswords() {
+  const [passwords, setPasswords] = useState<Password[]>([]);
+  const [currentView, setCurrentViewInternal] = useState<ViewType>("all");
+  const [loading, setLoading] = useState(true);
+
+  console.log("usePasswords: Hook initialized with currentView:", currentView);
+
+  // Load passwords from API
+  const loadPasswords = async () => {
+    try {
+      console.log("usePasswords: loadPasswords called with currentView:", currentView);
+      setLoading(true);
+      
+      let view: 'all' | 'favorites' | 'inbox' | 'trash' = 'all';
+      let folderId: string | undefined;
+      let companyId: string | undefined;
+      
+      if (typeof currentView === 'object' && currentView.type === 'folder') {
+        view = 'all';
+        folderId = currentView.folderId;
+      } else if (typeof currentView === 'object' && currentView.type === 'company') {
+        view = 'all';
+        companyId = currentView.companyId;
+      } else {
+        view = currentView;
+      }
+      
+      const response = await apiClient.getPasswords(view, folderId, companyId);
+      console.log("usePasswords: API response:", response);
+      if (response.data) {
+        setPasswords(response.data);
+        console.log("usePasswords: Passwords set:", response.data);
+      } else if (response.error) {
+        console.error('Error loading passwords:', response.error);
+        toast.error('Ошибка загрузки паролей');
+      }
+    } catch (error) {
+      console.error('Error loading passwords:', error);
+      toast.error('Ошибка загрузки паролей');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load passwords when view changes
+  useEffect(() => {
+    console.log("usePasswords: useEffect triggered, currentView:", currentView);
+    loadPasswords();
+  }, [currentView]);
+
+  // Add another useEffect to track currentView changes
+  useEffect(() => {
+    console.log("usePasswords: currentView changed to:", currentView);
+  }, [currentView]);
+
+  const toggleFavorite = async (id: string) => {
+    try {
+      const password = passwords.find(p => p.id === id);
+      if (!password) return;
+
+      const response = await apiClient.updatePassword(id, {
+        favorite: !password.favorite
+      });
+
+      if (response.data) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success(
+          password.favorite 
+            ? "Удалено из избранного" 
+            : "Добавлено в избранное"
+        );
+      } else if (response.error) {
+        toast.error('Ошибка обновления пароля');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Ошибка обновления пароля');
+    }
+  };
+
+  const toggleTrash = async (id: string) => {
+    try {
+      const response = await apiClient.updatePassword(id, {
+        inTrash: true
+      });
+
+      if (response.data) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Перемещено в корзину");
+      } else if (response.error) {
+        toast.error('Ошибка перемещения в корзину');
+      }
+    } catch (error) {
+      console.error('Error toggling trash:', error);
+      toast.error('Ошибка перемещения в корзину');
+    }
+  };
+
+  const restore = async (id: string) => {
+    try {
+      const response = await apiClient.updatePassword(id, {
+        inTrash: false
+      });
+
+      if (response.data) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Восстановлено из корзины");
+      } else if (response.error) {
+        toast.error('Ошибка восстановления из корзины');
+      }
+    } catch (error) {
+      console.error('Error restoring password:', error);
+      toast.error('Ошибка восстановления из корзины');
+    }
+  };
+
+  const deletePermanent = async (id: string) => {
+    try {
+      const response = await apiClient.deletePassword(id);
+
+      if (response.data !== undefined) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Удалено окончательно");
+      } else if (response.error) {
+        toast.error('Ошибка удаления пароля');
+      }
+    } catch (error) {
+      console.error('Error deleting password:', error);
+      toast.error('Ошибка удаления пароля');
+    }
+  };
+
+  const restoreAll = async () => {
+    try {
+      // Get all passwords in trash
+      const trashResponse = await apiClient.getPasswords('trash');
+      if (trashResponse.data) {
+        // Restore each password
+        const restorePromises = trashResponse.data.map(password => 
+          apiClient.updatePassword(password.id, { inTrash: false })
+        );
+        
+        await Promise.all(restorePromises);
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Все пароли восстановлены из корзины");
+      }
+    } catch (error) {
+      console.error('Error restoring all passwords:', error);
+      toast.error('Ошибка восстановления всех паролей');
+    }
+  };
+
+  const emptyTrash = async () => {
+    try {
+      // Get all passwords in trash
+      const trashResponse = await apiClient.getPasswords('trash');
+      if (trashResponse.data) {
+        // Delete each password
+        const deletePromises = trashResponse.data.map(password => 
+          apiClient.deletePassword(password.id)
+        );
+        
+        await Promise.all(deletePromises);
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Корзина очищена");
+      }
+    } catch (error) {
+      console.error('Error emptying trash:', error);
+      toast.error('Ошибка очистки корзины');
+    }
+  };
+
+  const addPassword = async (password: Omit<Password, 'id'>) => {
+    try {
+      const response = await apiClient.createPassword(password);
+
+      if (response.data) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Пароль добавлен");
+      } else if (response.error) {
+        toast.error('Ошибка добавления пароля');
+      }
+    } catch (error) {
+      console.error('Error adding password:', error);
+      toast.error('Ошибка добавления пароля');
+    }
+  };
+
+  const updatePassword = async (id: string, updatedPassword: Partial<Password>) => {
+    try {
+      const response = await apiClient.updatePassword(id, updatedPassword);
+
+      if (response.data) {
+        await loadPasswords(); // Reload to get updated data
+        toast.success("Пароль обновлен");
+      } else if (response.error) {
+        toast.error('Ошибка обновления пароля');
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error('Ошибка обновления пароля');
+    }
+  };
+
+  const getPasswordsCount = () => {
+    return {
+      all: passwords.filter(p => !p.inTrash).length,
+      favorites: passwords.filter(p => p.favorite && !p.inTrash).length,
+      trash: passwords.filter(p => p.inTrash).length
+    };
+  };
+
+  const setCurrentView = (view: ViewType) => {
+    console.log("usePasswords: setCurrentView called with view:", view);
+    console.log("usePasswords: Current currentView before change:", currentView);
+    setCurrentViewInternal(view);
+    console.log("usePasswords: setCurrentViewInternal called");
+  };
+
+  return {
+    passwords,
+    loading,
+    currentView,
+    setCurrentView,
+    toggleFavorite,
+    toggleTrash,
+    restore,
+    deletePermanent,
+    restoreAll,
+    emptyTrash,
+    addPassword,
+    updatePassword,
+    getPasswordsCount,
+    refreshPasswords: loadPasswords
+  };
+}
