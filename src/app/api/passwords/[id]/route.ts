@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getOrCreateDefaultUser } from '@/lib/user-utils';
+import { Encryption } from '@/lib/encryption';
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -7,21 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const passwordId = params.id;
     
     // Get or create default user
-    let user = await db.user.findFirst({
-      where: {
-        email: 'default@example.com'
-      }
-    });
-
-    if (!user) {
-      user = await db.user.create({
-        data: {
-          email: 'default@example.com',
-          name: 'Default User',
-          role: 'USER'
-        }
-      });
-    }
+    const user = await getOrCreateDefaultUser();
 
     const { title, username, password, url, notes, icon, favorite, inTrash, folderId, companyId } = body;
 
@@ -37,30 +25,62 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Password not found' }, { status: 404 });
     }
 
+    // Подготовка данных для обновления
+    const updateData: any = {
+      ...(title && { title }),
+      ...(username !== undefined && { username }),
+      ...(url !== undefined && { url }),
+      ...(notes !== undefined && { notes }),
+      ...(icon !== undefined && { icon }),
+      ...(favorite !== undefined && { favorite }),
+      ...(inTrash !== undefined && { inTrash }),
+      ...(folderId !== undefined && { folderId }),
+      ...(companyId !== undefined && { companyId })
+    };
+
+    // Если пароль предоставлен, шифруем его
+    if (password) {
+      try {
+        const encryptedData = Encryption.encrypt(password);
+        updateData.password = encryptedData.encrypted;
+        updateData.iv = encryptedData.iv;
+        updateData.tag = encryptedData.tag;
+      } catch (error) {
+        console.error('Error encrypting password:', error);
+        return NextResponse.json({ error: 'Failed to encrypt password' }, { status: 500 });
+      }
+    }
+
     const updatedPassword = await db.password.update({
       where: { id: passwordId },
-      data: {
-        ...(title && { title }),
-        ...(username !== undefined && { username }),
-        ...(password && { password }),
-        ...(url !== undefined && { url }),
-        ...(notes !== undefined && { notes }),
-        ...(icon !== undefined && { icon }),
-        ...(favorite !== undefined && { favorite }),
-        ...(inTrash !== undefined && { inTrash }),
-        ...(folderId !== undefined && { folderId }),
-        ...(companyId !== undefined && { companyId })
-      },
+      data: updateData,
       include: {
         folder: true,
         company: true
       }
     });
 
+    // Расшифровка пароля для возврата
+    let decryptedPassword = '';
+    if (updatedPassword.password && updatedPassword.iv && updatedPassword.tag) {
+      try {
+        const encryptedData = {
+          encrypted: updatedPassword.password,
+          iv: updatedPassword.iv,
+          tag: updatedPassword.tag
+        };
+        decryptedPassword = Encryption.decrypt(encryptedData);
+      } catch (error) {
+        console.error('Error decrypting password:', error);
+        decryptedPassword = '[Ошибка расшифровки]';
+      }
+    }
+
     const transformedPassword = {
       id: updatedPassword.id,
       title: updatedPassword.title,
       username: updatedPassword.username,
+      password: decryptedPassword || password, // Возвращаем расшифрованный или оригинальный пароль
       url: updatedPassword.url,
       icon: updatedPassword.icon,
       favorite: updatedPassword.favorite,
@@ -82,21 +102,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const passwordId = params.id;
     
     // Get or create default user
-    let user = await db.user.findFirst({
-      where: {
-        email: 'default@example.com'
-      }
-    });
-
-    if (!user) {
-      user = await db.user.create({
-        data: {
-          email: 'default@example.com',
-          name: 'Default User',
-          role: 'USER'
-        }
-      });
-    }
+    const user = await getOrCreateDefaultUser();
 
     // Check if password exists and belongs to user
     const existingPassword = await db.password.findFirst({

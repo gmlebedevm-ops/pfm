@@ -100,84 +100,26 @@ class ApiClient {
 
   // Company operations
   async getCompanies() {
-    // Demo companies data
-    return new Promise<ApiResponse<any[]>>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: [
-            {
-              id: '1',
-              name: 'Технологии Будущего',
-              description: 'Разработка инновационных IT-решений',
-              website: 'https://future-tech.com',
-              email: 'info@future-tech.com',
-              phone: '+7 (495) 123-45-67',
-              address: 'г. Москва, ул. Примерная, 123',
-              count: 3,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: '2',
-              name: 'ЭкоСтарт',
-              description: 'Экологичные решения для бизнеса',
-              website: 'https://ecostart.ru',
-              email: 'contact@ecostart.ru',
-              phone: '+7 (812) 987-65-43',
-              address: 'г. Санкт-Петербург, пр. Невский, 456',
-              count: 1,
-              createdAt: new Date(Date.now() - 86400000).toISOString(),
-              updatedAt: new Date(Date.now() - 86400000).toISOString()
-            }
-          ]
-        });
-      }, 500);
-    });
+    return this.request<any[]>('/companies');
   }
 
   async createCompany(companyData: any) {
-    // Demo create company
-    return new Promise<ApiResponse<any>>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: {
-            id: Date.now().toString(),
-            name: companyData.name,
-            description: companyData.description,
-            count: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        });
-      }, 500);
+    return this.request<any>('/companies', {
+      method: 'POST',
+      body: JSON.stringify(companyData),
     });
   }
 
   async updateCompany(id: string, companyData: any) {
-    // Demo update company
-    return new Promise<ApiResponse<any>>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: {
-            id,
-            ...companyData,
-            count: Math.floor(Math.random() * 10),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        });
-      }, 500);
+    return this.request<any>(`/companies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(companyData),
     });
   }
 
   async deleteCompany(id: string) {
-    // Demo delete company
-    return new Promise<ApiResponse<any>>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          data: { success: true }
-        });
-      }, 500);
+    return this.request(`/companies/${id}`, {
+      method: 'DELETE',
     });
   }
 

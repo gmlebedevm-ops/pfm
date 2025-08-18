@@ -22,12 +22,12 @@ export interface Password {
   isEncrypted?: boolean;
 }
 
-export type ViewType = "all" | "favorites" | "inbox" | "trash" | "folders-management" | "account-management" | "companies-management" | "administration" | { type: "folder"; folderId: string; folderName: string } | { type: "company"; companyId: string; companyName: string };
+export type ViewType = "all" | "favorites" | "inbox" | "trash" | "folders-management" | "account-management" | "companies-management" | "administration" | "analytics" | { type: "folder"; folderId: string; folderName: string } | { type: "company"; companyId: string; companyName: string };
 
 export function usePasswords() {
   const [passwords, setPasswords] = useState<Password[]>([]);
   const [currentView, setCurrentViewInternal] = useState<ViewType>("all");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   console.log("usePasswords: Hook initialized with currentView:", currentView);
 
@@ -51,7 +51,16 @@ export function usePasswords() {
         view = currentView;
       }
       
-      const response = await apiClient.getPasswords(view, folderId, companyId);
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Loading passwords timeout')), 5000);
+      });
+      
+      const response = await Promise.race([
+        apiClient.getPasswords(view, folderId, companyId),
+        timeoutPromise
+      ]);
+      
       console.log("usePasswords: API response:", response);
       if (response.data) {
         setPasswords(response.data);
@@ -59,10 +68,12 @@ export function usePasswords() {
       } else if (response.error) {
         console.error('Error loading passwords:', response.error);
         toast.error('Ошибка загрузки паролей');
+        setPasswords([]); // Set empty array on error
       }
     } catch (error) {
       console.error('Error loading passwords:', error);
       toast.error('Ошибка загрузки паролей');
+      setPasswords([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

@@ -81,6 +81,8 @@ model Password {
   title         String
   username      String?
   password      String   // This will be encrypted
+  iv            String?  // Initialization vector for encryption
+  tag           String?  // Authentication tag for encryption
   url           String?
   notes         String?
   icon          String?

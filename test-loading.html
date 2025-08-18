@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loading Test</title>
+</head>
+<body>
+    <h1>Testing Application Loading</h1>
+    <iframe src="http://localhost:3001" width="100%" height="600px"></iframe>
+    <div id="status">Checking loading status...</div>
+    
+    <script>
+        setTimeout(() => {
+            const iframe = document.querySelector('iframe');
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const hasLoadingIndicator = iframeDoc.querySelector('[class*="loading"], [class*="spinner"], [class*="ring"]');
+                const statusDiv = document.getElementById('status');
+                
+                if (hasLoadingIndicator) {
+                    statusDiv.textContent = 'Loading indicator found - infinite loading detected';
+                    statusDiv.style.color = 'red';
+                } else {
+                    statusDiv.textContent = 'No loading indicator found - app loaded successfully';
+                    statusDiv.style.color = 'green';
+                }
+            } catch (e) {
+                document.getElementById('status').textContent = 'Cannot access iframe content (CORS restriction)';
+                document.getElementById('status').style.color = 'orange';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

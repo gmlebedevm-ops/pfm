@@ -23,7 +23,8 @@ import {
   ChevronRight,
   Plus,
   Edit,
-  Shield
+  Shield,
+  BarChart3
 } from "lucide-react";
 import { FolderModal } from "@/components/folders/folder-modal";
 import { apiClient } from "@/lib/api-client";
@@ -52,11 +53,6 @@ export function SidebarMenu({
   onEditFolder,
   onEditCompany
 }: SidebarMenuProps) {
-  console.log("SidebarMenu: Component rendered with props:", {
-    currentView,
-    onViewChange: typeof onViewChange,
-    passwordsCount
-  });
   const router = useRouter();
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const [companiesExpanded, setCompaniesExpanded] = useState(true);
@@ -66,7 +62,14 @@ export function SidebarMenu({
   // Состояния для хранения папок и предприятий с загрузкой из API
   const [folders, setFolders] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  // Add logging after state initialization
+  console.log("SidebarMenu: Component rendered with props:", {
+    currentView,
+    onViewChange: typeof onViewChange,
+    passwordsCount
+  });
 
   // Load folders from API
   const loadFolders = async () => {
@@ -77,11 +80,16 @@ export function SidebarMenu({
       if (response.data) {
         setFolders(response.data);
         console.log("SidebarMenu: Folders set:", response.data);
+        console.log("SidebarMenu: Number of folders loaded:", response.data.length);
       } else {
         console.error('Error loading folders:', response.error);
+        // Set empty array on error
+        setFolders([]);
       }
     } catch (error) {
       console.error('Error loading folders:', error);
+      // Set empty array on error
+      setFolders([]);
     }
   };
 
@@ -94,32 +102,76 @@ export function SidebarMenu({
       if (response.data) {
         setCompanies(response.data);
         console.log("SidebarMenu: Companies set:", response.data);
+        console.log("SidebarMenu: Number of companies loaded:", response.data.length);
       } else {
         console.error('Error loading companies:', response.error);
+        // Set empty array on error
+        setCompanies([]);
       }
     } catch (error) {
       console.error('Error loading companies:', error);
+      // Set empty array on error
+      setCompanies([]);
     }
   };
 
-  // Load data on component mount
+  // Load data on component mount and when dependencies change
   useEffect(() => {
     console.log("SidebarMenu: Component mounted, loading data...");
     const loadData = async () => {
       try {
         console.log("SidebarMenu: Starting to load data...");
         setLoading(true);
-        await Promise.all([loadFolders(), loadCompanies()]);
+        
+        // Load folders and companies
+        await Promise.all([
+          loadFolders(),
+          loadCompanies()
+        ]);
+        
         console.log("SidebarMenu: Data loaded successfully");
       } catch (error) {
         console.error('Error loading data:', error);
+        // Set empty arrays on error to prevent infinite loading
+        setFolders([]);
+        setCompanies([]);
       } finally {
         console.log("SidebarMenu: Setting loading to false");
         setLoading(false);
       }
     };
     loadData();
+    
+    // Force set loading to false after 3 seconds as a fallback
+    const timeout = setTimeout(() => {
+      console.log("SidebarMenu: Force setting loading to false after timeout");
+      setLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(timeout);
+  }, []); // Empty dependency array means this runs only on mount
+
+  // Add a function to manually refresh data
+  const refreshData = useCallback(async () => {
+    console.log("SidebarMenu: Manually refreshing data...");
+    try {
+      setLoading(true);
+      await Promise.all([
+        loadFolders(),
+        loadCompanies()
+      ]);
+      console.log("SidebarMenu: Data refreshed successfully");
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Add useEffect to log state changes
+  useEffect(() => {
+    console.log("SidebarMenu: State updated - folders:", folders.length, "companies:", companies.length, "loading:", loading);
+  }, [folders, companies, loading]);
 
   const menuItems = [
     { 
@@ -150,15 +202,11 @@ export function SidebarMenu({
       count: passwordsCount.trash,
       view: "trash" as const
     },
-    { 
-      id: "administration", 
-      label: "Администрирование", 
-      icon: Shield, 
-      view: "administration" as const
-    },
   ];
 
   const accountItems = [
+    { id: "administration", label: "Администрирование", icon: Shield },
+    { id: "analytics", label: "Аналитика", icon: BarChart3 },
     { id: "account", label: "Аккаунт", icon: User },
     { id: "settings", label: "Настройки", icon: Settings },
     { id: "logout", label: "Выйти", icon: LogOut, variant: "destructive" as const },
@@ -184,7 +232,7 @@ export function SidebarMenu({
       });
 
       if (response.data) {
-        await loadFolders(); // Reload folders
+        await refreshData(); // Refresh data after creating folder
         console.log("Папка сохранена:", response.data);
       } else if (response.error) {
         console.error('Error creating folder:', response.error);
@@ -203,7 +251,7 @@ export function SidebarMenu({
       });
 
       if (response.data) {
-        await loadCompanies(); // Reload companies
+        await refreshData(); // Refresh data after creating company
         console.log("Предприятие сохранено:", response.data);
       } else if (response.error) {
         console.error('Error creating company:', response.error);
@@ -227,6 +275,14 @@ export function SidebarMenu({
 
   const handleAccountItemClick = (itemId: string) => {
     switch (itemId) {
+      case "administration":
+        // Switch to administration view
+        handleMenuItemClick("administration");
+        break;
+      case "analytics":
+        // Switch to analytics view
+        handleMenuItemClick("analytics");
+        break;
       case "account":
         // Switch to account management view
         handleMenuItemClick("account-management");
@@ -367,11 +423,14 @@ export function SidebarMenu({
                 <CollapsibleContent className="space-y-1 mt-2">
                   {loading ? (
                     <div className="pl-8 pr-3 text-sm text-muted-foreground">Загрузка...</div>
+                  ) : folders.length === 0 ? (
+                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Нет папок</div>
                   ) : (
                     folders.map((folder) => {
                       const isActive = typeof currentView === 'object' && 
                                       currentView.type === 'folder' && 
                                       currentView.folderId === folder.id;
+                      console.log("SidebarMenu: Rendering folder:", folder.name, "isActive:", isActive);
                       return (
                         <div key={folder.id} className="flex items-center gap-1">
                           <Button
@@ -453,11 +512,14 @@ export function SidebarMenu({
                 <CollapsibleContent className="space-y-1 mt-2">
                   {loading ? (
                     <div className="pl-8 pr-3 text-sm text-muted-foreground">Загрузка...</div>
+                  ) : companies.length === 0 ? (
+                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Нет предприятий</div>
                   ) : (
                     companies.map((company) => {
                       const isActive = typeof currentView === 'object' && 
                                       currentView.type === 'company' && 
                                       currentView.companyId === company.id;
+                      console.log("SidebarMenu: Rendering company:", company.name, "isActive:", isActive);
                       return (
                         <div key={company.id} className="flex items-center gap-1">
                           <Button

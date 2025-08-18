@@ -3,29 +3,51 @@ import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if demo user already exists
+    const existingDemoUser = await db.user.findFirst({
+      where: {
+        email: 'admin@passflow.ru'
+      }
+    });
+
+    if (!existingDemoUser) {
+      // Create demo user
+      const demoUser = await db.user.create({
+        data: {
+          email: 'admin@passflow.ru',
+          name: 'Admin User',
+          role: 'SUPER_ADMIN'
+        }
+      });
+      console.log('Demo user created:', demoUser);
+    }
+
     // Check if default user already exists
-    const existingUser = await db.user.findFirst({
+    const existingDefaultUser = await db.user.findFirst({
       where: {
         email: 'default@example.com'
       }
     });
 
-    if (existingUser) {
-      return NextResponse.json({ message: 'Default user already exists', user: existingUser });
+    if (!existingDefaultUser) {
+      // Create default user
+      const defaultUser = await db.user.create({
+        data: {
+          email: 'default@example.com',
+          name: 'Default User',
+          role: 'USER'
+        }
+      });
+      console.log('Default user created:', defaultUser);
     }
 
-    // Create default user
-    const defaultUser = await db.user.create({
-      data: {
-        email: 'default@example.com',
-        name: 'Default User',
-        role: 'USER'
-      }
+    return NextResponse.json({ 
+      message: 'Database initialized successfully', 
+      demoUser: existingDemoUser || { email: 'admin@passflow.ru' },
+      defaultUser: existingDefaultUser || { email: 'default@example.com' }
     });
-
-    return NextResponse.json({ message: 'Default user created successfully', user: defaultUser }, { status: 201 });
   } catch (error) {
-    console.error('Error creating default user:', error);
-    return NextResponse.json({ error: 'Failed to create default user' }, { status: 500 });
+    console.error('Error initializing database:', error);
+    return NextResponse.json({ error: 'Failed to initialize database' }, { status: 500 });
   }
 }

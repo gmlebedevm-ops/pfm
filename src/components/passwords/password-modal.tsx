@@ -32,7 +32,8 @@ import {
   EyeOff,
   Settings
 } from "lucide-react";
-import { encryptionManager, encryptPassword, generatePassword, isEncryptionReady, decryptPassword } from "@/lib/encryption";
+import { decryptPassword, isEncryptionReady } from "@/lib/encryption";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { apiClient } from "@/lib/api-client";
 
 interface PasswordModalProps {
@@ -85,15 +86,21 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
   const [companies, setCompanies] = useState<CompanyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordSettings, setShowPasswordSettings] = useState(false);
-  const [generatePasswordLength, setGeneratePasswordLength] = useState(16);
-  const [includeUppercase, setIncludeUppercase] = useState(true);
-  const [includeLowercase, setIncludeLowercase] = useState(true);
-  const [includeNumbers, setIncludeNumbers] = useState(true);
-  const [includeSymbols, setIncludeSymbols] = useState(true);
+  const [showGeneratorSettings, setShowGeneratorSettings] = useState(false);
+  const [generatorLength, setGeneratorLength] = useState(16);
+  const [generatorOptions, setGeneratorOptions] = useState({
+    uppercase: true,
+    lowercase: true,
+    numbers: true,
+    symbols: true
+  });
+  const [generatorCounts, setGeneratorCounts] = useState({
+    uppercase: 2,
+    lowercase: 2,
+    numbers: 2,
+    symbols: 2
+  });
   const [excludeAmbiguous, setExcludeAmbiguous] = useState(false);
-  const [excludeCustomChars, setExcludeCustomChars] = useState("");
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [lastSelectedFolder, setLastSelectedFolder] = useState<string>("");
   const [lastSelectedCompany, setLastSelectedCompany] = useState<string>("");
@@ -175,9 +182,6 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
           
           // Calculate password strength for existing password
           if (passwordValue) {
-            const strength = calculatePasswordStrength(passwordValue);
-            setPasswordStrength(strength);
-            
             const errors = validatePassword(passwordValue);
             setPasswordErrors(errors);
           }
@@ -197,7 +201,6 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
           folderId: "none",
           companyId: "none",
         });
-        setPasswordStrength(0);
         setPasswordErrors([]);
       }
     }
@@ -255,25 +258,6 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
     }
   };
 
-  // Password strength calculation
-  const calculatePasswordStrength = (password: string): number => {
-    if (!password) return 0;
-    
-    let strength = 0;
-    const length = password.length;
-    
-    // Length contributes up to 50 points
-    strength += Math.min(length * 2, 50);
-    
-    // Character variety
-    if (/[a-z]/.test(password)) strength += 10;
-    if (/[A-Z]/.test(password)) strength += 10;
-    if (/[0-9]/.test(password)) strength += 10;
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 20;
-    
-    return Math.min(strength, 100);
-  };
-
   // Password validation
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
@@ -311,76 +295,111 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
     return errors;
   };
 
-  // Enhanced password generator with entropy calculation
-  const generateSecurePassword = () => {
-    const charset = [];
-    if (includeLowercase) charset.push('abcdefghijklmnopqrstuvwxyz');
-    if (includeUppercase) charset.push('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
-    if (includeNumbers) charset.push('0123456789');
-    if (includeSymbols) charset.push('!@#$%^&*()_+-=[]{}|;:,.<>?');
-    
-    if (charset.length === 0) {
-      setPasswordErrors(["Выберите хотя бы один тип символов"]);
-      return;
-    }
-    
-    let allChars = charset.join('');
-    
-    // Exclude ambiguous characters if enabled
-    if (excludeAmbiguous) {
-      const ambiguousChars = '0O1lI';
-      allChars = allChars.split('').filter(char => !ambiguousChars.includes(char)).join('');
-    }
-    
-    // Exclude custom characters if provided
-    if (excludeCustomChars) {
-      allChars = allChars.split('').filter(char => !excludeCustomChars.includes(char)).join('');
-    }
-    
-    if (allChars.length === 0) {
-      setPasswordErrors(["Нет доступных символов для генерации пароля. Проверьте настройки исключения."]);
-      return;
-    }
-    
-    let password = '';
-    
-    // Ensure at least one character from each selected charset
-    for (const chars of charset) {
-      let filteredChars = chars;
+  // Generate secure password using client-side crypto
+  const handleGeneratePassword = () => {
+    try {
+      // Build character sets based on options
+      let lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
+      let uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      let numberChars = '0123456789';
+      let symbolChars = '!@#$%^&*';
       
-      // Apply exclusions to each charset
+      // Exclude ambiguous characters if enabled
       if (excludeAmbiguous) {
-        const ambiguousChars = '0O1lI';
-        filteredChars = filteredChars.split('').filter(char => !ambiguousChars.includes(char)).join('');
+        lowercaseChars = lowercaseChars.replace(/[l]/g, '');
+        uppercaseChars = uppercaseChars.replace(/[IO]/g, '');
+        numberChars = numberChars.replace(/[01]/g, '');
+        symbolChars = symbolChars.replace(/[|]/g, '');
       }
       
-      if (excludeCustomChars) {
-        filteredChars = filteredChars.split('').filter(char => !excludeCustomChars.includes(char)).join('');
+      // Validate that at least one character type is selected
+      const selectedTypes = Object.entries(generatorOptions)
+        .filter(([_, enabled]) => enabled)
+        .map(([type, _]) => type);
+      
+      if (selectedTypes.length === 0) {
+        setPasswordErrors(['Выберите хотя бы один тип символов для генерации']);
+        return;
       }
       
-      if (filteredChars.length > 0) {
-        password += filteredChars.charAt(Math.floor(Math.random() * filteredChars.length));
+      // Calculate total required characters from counts
+      const totalRequiredChars = selectedTypes.reduce((sum, type) => {
+        return sum + generatorCounts[type as keyof typeof generatorCounts];
+      }, 0);
+      
+      // Validate that total required characters don't exceed password length
+      if (totalRequiredChars > generatorLength) {
+        setPasswordErrors([`Сумма минимальных символов (${totalRequiredChars}) превышает длину пароля (${generatorLength})`]);
+        return;
       }
+      
+      let password = '';
+      const remainingLength = generatorLength - totalRequiredChars;
+      
+      // Add required characters of each type
+      if (generatorOptions.lowercase) {
+        for (let i = 0; i < generatorCounts.lowercase; i++) {
+          const randomIndex = Math.floor(Math.random() * lowercaseChars.length);
+          password += lowercaseChars[randomIndex];
+        }
+      }
+      
+      if (generatorOptions.uppercase) {
+        for (let i = 0; i < generatorCounts.uppercase; i++) {
+          const randomIndex = Math.floor(Math.random() * uppercaseChars.length);
+          password += uppercaseChars[randomIndex];
+        }
+      }
+      
+      if (generatorOptions.numbers) {
+        for (let i = 0; i < generatorCounts.numbers; i++) {
+          const randomIndex = Math.floor(Math.random() * numberChars.length);
+          password += numberChars[randomIndex];
+        }
+      }
+      
+      if (generatorOptions.symbols) {
+        for (let i = 0; i < generatorCounts.symbols; i++) {
+          const randomIndex = Math.floor(Math.random() * symbolChars.length);
+          password += symbolChars[randomIndex];
+        }
+      }
+      
+      // Build charset for remaining characters
+      let charset = '';
+      if (generatorOptions.lowercase) charset += lowercaseChars;
+      if (generatorOptions.uppercase) charset += uppercaseChars;
+      if (generatorOptions.numbers) charset += numberChars;
+      if (generatorOptions.symbols) charset += symbolChars;
+      
+      // Add remaining random characters
+      for (let i = 0; i < remainingLength; i++) {
+        const randomIndex = Math.floor(Math.random() * charset.length);
+        password += charset[randomIndex];
+      }
+      
+      // Shuffle the password to mix required characters
+      password = password.split('').sort(() => Math.random() - 0.5).join('');
+      
+      setFormData(prev => ({ ...prev, password }));
+      
+      // Validate password and update errors
+      const errors = validatePassword(password);
+      setPasswordErrors(errors);
+    } catch (error) {
+      console.error('Error generating password:', error);
+      setPasswordErrors(['Ошибка генерации пароля']);
     }
-    
-    // Fill remaining length with random characters
-    for (let i = password.length; i < generatePasswordLength; i++) {
-      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-    }
-    
-    // Shuffle the password
-    password = password.split('').sort(() => Math.random() - 0.5).join('');
-    
-    // Update form data and calculate strength
-    setFormData(prev => ({ ...prev, password }));
-    
-    // Calculate and update password strength
-    const strength = calculatePasswordStrength(password);
-    setPasswordStrength(strength);
-    
-    // Validate password and update errors
-    const errors = validatePassword(password);
-    setPasswordErrors(errors);
+  };
+
+  // Handle generator option changes
+  const handleGeneratorOptionChange = (option: keyof typeof generatorOptions, value: boolean) => {
+    setGeneratorOptions(prev => ({ ...prev, [option]: value }));
+  };
+
+  // Handle generator count changes
+  const handleGeneratorCountChange = (type: keyof typeof generatorCounts, value: number) => {
+    setGeneratorCounts(prev => ({ ...prev, [type]: Math.max(0, value) }));
   };
 
   // Auto-fill from URL
@@ -419,28 +438,12 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
     return null;
   };
 
-  const generatePassword = () => {
-    const newPassword = generatePassword(generatePasswordLength);
-    setFormData(prev => ({ ...prev, password: newPassword }));
-    
-    // Calculate and update password strength
-    const strength = calculatePasswordStrength(newPassword);
-    setPasswordStrength(strength);
-    
-    // Validate password and update errors
-    const errors = validatePassword(newPassword);
-    setPasswordErrors(errors);
-  };
-
   const handleInputChange = async (field: string, value: string | boolean) => {
     const newFormData = { ...formData, [field]: value };
     setFormData(newFormData);
     
-    // Update password strength when password changes
+    // Update password validation when password changes
     if (field === 'password') {
-      const strength = calculatePasswordStrength(value as string);
-      setPasswordStrength(strength);
-      
       const errors = validatePassword(value as string);
       setPasswordErrors(errors);
     }
@@ -565,6 +568,7 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
                       size="sm"
                       className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 p-0"
                       onClick={() => setShowPassword(!showPassword)}
+                      title={showPassword ? "Скрыть пароль" : "Показать пароль"}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -579,6 +583,7 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
                     size="sm"
                     className="h-9 px-3"
                     onClick={() => navigator.clipboard.writeText(formData.password)}
+                    title="Копировать пароль"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -587,30 +592,15 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
                     variant="outline"
                     size="sm"
                     className="h-9 px-3"
-                    onClick={generateSecurePassword}
+                    onClick={handleGeneratePassword}
+                    title="Сгенерировать пароль"
                   >
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 {/* Индикатор надежности пароля */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Надежность пароля</span>
-                    <span className={passwordStrength >= 70 ? "text-green-600" : passwordStrength >= 40 ? "text-yellow-600" : "text-red-600"}>
-                      {passwordStrength >= 70 ? "Высокая" : passwordStrength >= 40 ? "Средняя" : "Низкая"} ({passwordStrength}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        passwordStrength >= 70 ? "bg-green-500" : 
-                        passwordStrength >= 40 ? "bg-yellow-500" : "bg-red-500"
-                      }`}
-                      style={{ width: `${passwordStrength}%` }}
-                    />
-                  </div>
-                </div>
+                <PasswordStrength password={formData.password} />
               </div>
 
               <div className="space-y-2">
@@ -706,18 +696,17 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Безопасность</h3>
 
-              {/* Настройки генератора паролей (скрываются/показываются) */}
-              {showPasswordSettings && (
+              {/* Настройки генератора паролей */}
+              {showGeneratorSettings && (
                 <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
                   <div className="space-y-2">
-                    <Label htmlFor="length">Длина пароля: {generatePasswordLength}</Label>
+                    <Label>Длина пароля: {generatorLength}</Label>
                     <input
-                      id="length"
                       type="range"
                       min="8"
                       max="32"
-                      value={generatePasswordLength}
-                      onChange={(e) => setGeneratePasswordLength(parseInt(e.target.value))}
+                      value={generatorLength}
+                      onChange={(e) => setGeneratorLength(parseInt(e.target.value))}
                       className="w-full"
                     />
                   </div>
@@ -725,62 +714,130 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2">
                       <Switch
-                        id="uppercase"
-                        checked={includeUppercase}
-                        onCheckedChange={setIncludeUppercase}
+                        checked={generatorOptions.uppercase}
+                        onCheckedChange={(checked) => handleGeneratorOptionChange('uppercase', checked)}
                       />
-                      <Label htmlFor="uppercase">Заглавные буквы (A-Z)</Label>
+                      <Label>Заглавные буквы (A-Z)</Label>
+                      {generatorOptions.uppercase && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('uppercase', Math.max(0, generatorCounts.uppercase - 1))}
+                          >
+                            -
+                          </Button>
+                          <span className="text-xs w-6 text-center">{generatorCounts.uppercase}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('uppercase', generatorCounts.uppercase + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch
-                        id="lowercase"
-                        checked={includeLowercase}
-                        onCheckedChange={setIncludeLowercase}
+                        checked={generatorOptions.lowercase}
+                        onCheckedChange={(checked) => handleGeneratorOptionChange('lowercase', checked)}
                       />
-                      <Label htmlFor="lowercase">Строчные буквы (a-z)</Label>
+                      <Label>Строчные буквы (a-z)</Label>
+                      {generatorOptions.lowercase && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('lowercase', Math.max(0, generatorCounts.lowercase - 1))}
+                          >
+                            -
+                          </Button>
+                          <span className="text-xs w-6 text-center">{generatorCounts.lowercase}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('lowercase', generatorCounts.lowercase + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch
-                        id="numbers"
-                        checked={includeNumbers}
-                        onCheckedChange={setIncludeNumbers}
+                        checked={generatorOptions.numbers}
+                        onCheckedChange={(checked) => handleGeneratorOptionChange('numbers', checked)}
                       />
-                      <Label htmlFor="numbers">Цифры (0-9)</Label>
+                      <Label>Цифры (0-9)</Label>
+                      {generatorOptions.numbers && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('numbers', Math.max(0, generatorCounts.numbers - 1))}
+                          >
+                            -
+                          </Button>
+                          <span className="text-xs w-6 text-center">{generatorCounts.numbers}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('numbers', generatorCounts.numbers + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch
-                        id="symbols"
-                        checked={includeSymbols}
-                        onCheckedChange={setIncludeSymbols}
+                        checked={generatorOptions.symbols}
+                        onCheckedChange={(checked) => handleGeneratorOptionChange('symbols', checked)}
                       />
-                      <Label htmlFor="symbols">Символы (!@#$%^&*)</Label>
+                      <Label>Символы (!@#$%^&*)</Label>
+                      {generatorOptions.symbols && (
+                        <div className="flex items-center space-x-1 ml-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('symbols', Math.max(0, generatorCounts.symbols - 1))}
+                          >
+                            -
+                          </Button>
+                          <span className="text-xs w-6 text-center">{generatorCounts.symbols}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleGeneratorCountChange('symbols', generatorCounts.symbols + 1)}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="space-y-3 pt-2 border-t">
-                    <h4 className="text-sm font-medium">Исключения</h4>
-                    
                     <div className="flex items-center space-x-2">
                       <Switch
-                        id="excludeAmbiguous"
                         checked={excludeAmbiguous}
-                        onCheckedChange={setExcludeAmbiguous}
+                        onCheckedChange={(checked) => setExcludeAmbiguous(checked)}
                       />
-                      <Label htmlFor="excludeAmbiguous">Исключить неоднозначные символы (0, O, 1, l, I)</Label>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="excludeCustomChars">Исключить символы:</Label>
-                      <Input
-                        id="excludeCustomChars"
-                        placeholder="Введите символы для исключения"
-                        value={excludeCustomChars}
-                        onChange={(e) => setExcludeCustomChars(e.target.value)}
-                        className="text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Например: !@#$%^&* для исключения специальных символов
-                      </p>
+                      <Label>Исключить неоднозначные символы (0/O, 1/I/l)</Label>
                     </div>
                   </div>
                 </div>
@@ -804,8 +861,8 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
           <div className="flex justify-between items-center">
             <Button
               type="button"
-              variant={showPasswordSettings ? "default" : "outline"}
-              onClick={() => setShowPasswordSettings(!showPasswordSettings)}
+              variant={showGeneratorSettings ? "default" : "outline"}
+              onClick={() => setShowGeneratorSettings(!showGeneratorSettings)}
             >
               <Settings className="h-4 w-4 mr-2" />
               Настройки генератора

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getOrCreateDefaultUser } from '@/lib/user-utils';
+import { Encryption } from '@/lib/encryption';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,19 +57,38 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const transformedPasswords = passwords.map(password => ({
-      id: password.id,
-      title: password.title,
-      username: password.username,
-      url: password.url,
-      icon: password.icon,
-      favorite: password.favorite,
-      inTrash: password.inTrash,
-      lastAccessed: password.lastAccessed?.toISOString() || 'Только что',
-      company: password.company?.name,
-      folder: password.folder?.name,
-      folderId: password.folder?.id
-    }));
+    const transformedPasswords = passwords.map(password => {
+      // Расшифровка пароля
+      let decryptedPassword = '';
+      try {
+        if (password.password && password.iv && password.tag) {
+          const encryptedData = {
+            encrypted: password.password,
+            iv: password.iv,
+            tag: password.tag
+          };
+          decryptedPassword = Encryption.decrypt(encryptedData);
+        }
+      } catch (error) {
+        console.error('Error decrypting password:', error);
+        decryptedPassword = '[Ошибка расшифровки]';
+      }
+
+      return {
+        id: password.id,
+        title: password.title,
+        username: password.username,
+        password: decryptedPassword, // Расшифрованный пароль
+        url: password.url,
+        icon: password.icon,
+        favorite: password.favorite,
+        inTrash: password.inTrash,
+        lastAccessed: password.lastAccessed?.toISOString() || 'Только что',
+        company: password.company?.name,
+        folder: password.folder?.name,
+        folderId: password.folder?.id
+      };
+    });
 
     return NextResponse.json(transformedPasswords);
   } catch (error) {
@@ -90,11 +110,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title and password are required' }, { status: 400 });
     }
 
+    // Шифрование пароля
+    let encryptedPassword: string = '';
+    let iv: string = '';
+    let tag: string = '';
+    
+    try {
+      const encryptedData = Encryption.encrypt(password);
+      encryptedPassword = encryptedData.encrypted;
+      iv = encryptedData.iv;
+      tag = encryptedData.tag;
+    } catch (error) {
+      console.error('Error encrypting password:', error);
+      return NextResponse.json({ error: 'Failed to encrypt password' }, { status: 500 });
+    }
+
     const newPassword = await db.password.create({
       data: {
         title,
         username,
-        password,
+        password: encryptedPassword,
+        iv,
+        tag,
         url,
         notes,
         icon,
@@ -114,6 +151,7 @@ export async function POST(request: NextRequest) {
       id: newPassword.id,
       title: newPassword.title,
       username: newPassword.username,
+      password: password, // Возвращаем оригинальный пароль для отображения
       url: newPassword.url,
       icon: newPassword.icon,
       favorite: newPassword.favorite,

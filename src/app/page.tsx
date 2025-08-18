@@ -13,6 +13,7 @@ import { FoldersManagement } from "@/components/folders/folders-management";
 import { AccountManagement } from "@/components/account/account-management";
 import { CompaniesManagement } from "@/components/companies/companies-management";
 import { AdministrationManagement } from "@/components/administration/administration-management";
+import { SecurityDashboard } from "@/components/analytics/security-dashboard";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -35,16 +36,24 @@ export default function Home() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<any>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
-  // Temporary: Disable authentication for debugging
+  // Check authentication status
   useEffect(() => {
-    console.log("Home: Skipping authentication for debugging");
-    setIsInitialized(true);
-  }, []);
+    if (status === "loading") return;
+    
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    
+    if (status === "authenticated") {
+      setIsInitialized(true);
+    }
+  }, [status, router]);
 
   // Initialize default user on component mount
   useEffect(() => {
@@ -118,7 +127,7 @@ export default function Home() {
     }
   }, [currentView]);
 
-  if (!isInitialized || loading) {
+  if (status === "loading" || !isInitialized || loading) {
     return (
       <AppLayout user={{ name: 'Debug User', email: 'debug@example.com' }}>
         <div className="space-y-4">
@@ -159,6 +168,8 @@ export default function Home() {
         <CompaniesManagement selectedCompanyId={selectedCompanyId || undefined} />
       ) : currentView === "administration" ? (
         <AdministrationManagement />
+      ) : currentView === "analytics" ? (
+        <SecurityDashboard />
       ) : (
         <>
           <PasswordGrid 

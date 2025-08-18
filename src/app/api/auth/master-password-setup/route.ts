@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, masterPasswordSetup } = await request.json();
+    const { userId, masterPasswordHash, masterPasswordSalt, masterPasswordSetup } = await request.json();
 
     if (!userId || typeof masterPasswordSetup !== 'boolean') {
       return NextResponse.json(
@@ -13,17 +13,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user's master password setup status
-    // Note: In a real implementation, you would store a hash or indicator
-    // that the master password has been set up, not the actual password
+    // В реальной реализации здесь нужно добавить поля в схему Prisma
+    // Для демонстрации используем существующие поля
     const updatedUser = await db.user.update({
       where: {
         id: userId
       },
       data: {
-        // Add a field to indicate master password setup
-        // For now, we'll use the name field to store this info
-        // In a real implementation, you would add a proper field to the schema
-        name: masterPasswordSetup ? "Master Password Set" : null
+        // В реальном приложении здесь должны быть отдельные поля для:
+        // - masterPasswordHash
+        // - masterPasswordSalt  
+        // - masterPasswordSetup
+        // Для демонстрации используем поле twoFactorSecret как флаг
+        twoFactorSecret: masterPasswordSetup ? masterPasswordHash : null,
+        twoFactorEnabled: masterPasswordSetup
       }
     });
 

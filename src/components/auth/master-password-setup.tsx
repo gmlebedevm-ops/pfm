@@ -19,7 +19,8 @@ import {
   Unlock,
   RefreshCw
 } from "lucide-react";
-import { encryptionManager, generatePassword } from "@/lib/encryption";
+import { Encryption } from "@/lib/encryption";
+import { PasswordStrength } from "@/components/ui/password-strength";
 
 interface MasterPasswordSetupProps {
   isOpen: boolean;
@@ -36,54 +37,71 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState("");
-  const [passwordStrength, setPasswordStrength] = useState(0);
-
-  const calculatePasswordStrength = (password: string): number => {
-    let strength = 0;
-    
-    // Length check
-    if (password.length >= 8) strength += 25;
-    if (password.length >= 12) strength += 25;
-    
-    // Character variety
-    if (/[a-z]/.test(password)) strength += 10;
-    if (/[A-Z]/.test(password)) strength += 10;
-    if (/[0-9]/.test(password)) strength += 10;
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 20;
-    
-    return Math.min(strength, 100);
-  };
 
   const handlePasswordChange = (password: string) => {
     setMasterPassword(password);
-    setPasswordStrength(calculatePasswordStrength(password));
     setError("");
   };
 
   const generateStrongPassword = () => {
-    const strongPassword = generatePassword(16);
-    setMasterPassword(strongPassword);
-    setConfirmPassword("");
-    setPasswordStrength(100);
-    setError("");
+    try {
+      const strongPassword = Encryption.generatePassword(16, {
+        uppercase: true,
+        lowercase: true,
+        numbers: true,
+        symbols: true
+      });
+      setMasterPassword(strongPassword);
+      setConfirmPassword("");
+      setError("");
+    } catch (error) {
+      setError("Ошибка генерации пароля");
+    }
+  };
+
+  const validateMasterPassword = (password: string): string[] => {
+    const errors: string[] = [];
+    
+    if (password.length < 12) {
+      errors.push("Мастер-пароль должен содержать минимум 12 символов");
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push("Добавьте строчные буквы (a-z)");
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Добавьте заглавные буквы (A-Z)");
+    }
+    
+    if (!/[0-9]/.test(password)) {
+      errors.push("Добавьте цифры (0-9)");
+    }
+    
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      errors.push("Добавьте специальные символы (!@#$%^&*)");
+    }
+    
+    return errors;
   };
 
   const handleContinue = () => {
     if (step === 1) {
       if (!masterPassword) {
-        setError("Please enter a master password");
+        setError("Введите мастер-пароль");
         return;
       }
       
-      if (passwordStrength < 50) {
-        setError("Please choose a stronger password");
+      const errors = validateMasterPassword(masterPassword);
+      if (errors.length > 0) {
+        setError(errors.join(". "));
         return;
       }
       
       setStep(2);
     } else if (step === 2) {
       if (masterPassword !== confirmPassword) {
-        setError("Passwords do not match");
+        setError("Пароли не совпадают");
         return;
       }
       
@@ -96,10 +114,10 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
     setError("");
 
     try {
-      // Initialize encryption with master password
-      await encryptionManager.initialize(masterPassword);
+      // Хешируем мастер-пароль для сохранения
+      const { hash, salt } = Encryption.hashMasterPassword(masterPassword);
       
-      // Save master password setup status to user profile
+      // Сохраняем хеш мастер-пароля в профиле пользователя
       if (user?.id) {
         const response = await fetch('/api/auth/master-password-setup', {
           method: 'POST',
@@ -108,35 +126,29 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
           },
           body: JSON.stringify({
             userId: user.id,
+            masterPasswordHash: hash,
+            masterPasswordSalt: salt,
             masterPasswordSetup: true
           }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to save master password setup');
+          throw new Error('Не удалось сохранить мастер-пароль');
         }
       }
+      
+      // Сохраняем мастер-пароль в sessionStorage для текущей сессии
+      // В реальном приложении это должно быть более безопасно
+      sessionStorage.setItem('masterPassword', masterPassword);
       
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate initialization
       onComplete();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to initialize encryption. Please try again.");
+      setError(err instanceof Error ? err.message : "Не удалось инициализировать шифрование. Попробуйте еще раз.");
     } finally {
       setIsInitializing(false);
     }
-  };
-
-  const getStrengthColor = (strength: number) => {
-    if (strength < 30) return "bg-red-500";
-    if (strength < 70) return "bg-yellow-500";
-    return "bg-green-500";
-  };
-
-  const getStrengthText = (strength: number) => {
-    if (strength < 30) return "Weak";
-    if (strength < 70) return "Medium";
-    return "Strong";
   };
 
   if (!isOpen) return null;
@@ -147,35 +159,35 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Master Password Setup
+            Установка мастер-пароля
           </CardTitle>
           <CardDescription>
-            {step === 1 && "Create a master password to encrypt your data"}
-            {step === 2 && "Confirm your master password"}
-            {step === 3 && "Initialize end-to-end encryption"}
+            {step === 1 && "Создайте мастер-пароль для шифрования ваших данных"}
+            {step === 2 && "Подтвердите ваш мастер-пароль"}
+            {step === 3 && "Инициализация сквозного шифрования"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Step 1: Create Master Password */}
+          {/* Шаг 1: Создание мастер-пароля */}
           {step === 1 && (
             <div className="space-y-4">
               <Alert>
                 <Lock className="h-4 w-4" />
                 <AlertDescription>
-                  Your master password is used to encrypt all your passwords. 
-                  It cannot be recovered if lost.
+                  Ваш мастер-пароль используется для шифрования всех ваших паролей. 
+                  Он не может быть восстановлен в случае утери.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-2">
-                <Label htmlFor="master-password">Master Password</Label>
+                <Label htmlFor="master-password">Мастер-пароль</Label>
                 <div className="relative">
                   <Input
                     id="master-password"
                     type={showPassword ? "text" : "password"}
                     value={masterPassword}
                     onChange={(e) => handlePasswordChange(e.target.value)}
-                    placeholder="Enter your master password"
+                    placeholder="Введите ваш мастер-пароль"
                     className="pr-10"
                   />
                   <Button
@@ -189,49 +201,41 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
                 </div>
                 
                 {masterPassword && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Password Strength</span>
-                      <Badge variant="outline" className={getStrengthColor(passwordStrength)}>
-                        {getStrengthText(passwordStrength)}
-                      </Badge>
-                    </div>
-                    <Progress value={passwordStrength} className="h-2" />
-                  </div>
+                  <PasswordStrength password={masterPassword} />
                 )}
               </div>
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={generateStrongPassword} className="flex-1">
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Generate Strong Password
+                  Сгенерировать надежный пароль
                 </Button>
                 <Button onClick={handleContinue} className="flex-1" disabled={!masterPassword}>
-                  Continue
+                  Продолжить
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 2: Confirm Password */}
+          {/* Шаг 2: Подтверждение пароля */}
           {step === 2 && (
             <div className="space-y-4">
               <Alert>
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Please confirm your master password to ensure you remember it correctly.
+                  Пожалуйста, подтвердите ваш мастер-пароль, чтобы убедиться, что вы запомнили его правильно.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Master Password</Label>
+                <Label htmlFor="confirm-password">Подтвердите мастер-пароль</Label>
                 <div className="relative">
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your master password"
+                    placeholder="Подтвердите ваш мастер-пароль"
                     className="pr-10"
                   />
                   <Button
@@ -247,55 +251,55 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
+                  Назад
                 </Button>
                 <Button 
                   onClick={handleContinue} 
                   className="flex-1"
                   disabled={!confirmPassword}
                 >
-                  Continue
+                  Продолжить
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Initialize Encryption */}
+          {/* Шаг 3: Инициализация шифрования */}
           {step === 3 && (
             <div className="space-y-4">
               <Alert>
                 <Shield className="h-4 w-4" />
                 <AlertDescription>
-                  Your master password will be used to encrypt all your passwords locally on your device.
+                  Ваш мастер-пароль будет использоваться для шифрования всех ваших паролей локально на вашем устройстве.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">End-to-end encryption enabled</span>
+                  <span className="text-sm">Сквозное шифрование включено</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Zero-knowledge architecture</span>
+                  <span className="text-sm">Архитектура с нулевым разглашением</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Client-side encryption only</span>
+                  <span className="text-sm">Только клиентское шифрование</span>
                 </div>
               </div>
 
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Important:</strong> Store your master password in a safe place. 
-                  If you forget it, your data cannot be recovered.
+                  <strong>Важно:</strong> Сохраните ваш мастер-пароль в надежном месте. 
+                  Если вы забудете его, ваши данные не могут быть восстановлены.
                 </AlertDescription>
               </Alert>
 
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                  Back
+                  Назад
                 </Button>
                 <Button 
                   onClick={handleInitialize} 
@@ -305,12 +309,12 @@ export function MasterPasswordSetup({ isOpen, onClose, onComplete, user }: Maste
                   {isInitializing ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Initializing...
+                      Инициализация...
                     </>
                   ) : (
                     <>
                       <Unlock className="h-4 w-4 mr-2" />
-                      Initialize Encryption
+                      Инициализировать шифрование
                     </>
                   )}
                 </Button>
