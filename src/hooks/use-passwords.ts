@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 
@@ -28,67 +28,35 @@ export function usePasswords() {
   const [passwords, setPasswords] = useState<Password[]>([]);
   const [currentView, setCurrentViewInternal] = useState<ViewType>("all");
   const [loading, setLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   console.log("usePasswords: Hook initialized with currentView:", currentView);
 
-  // Load passwords from API
-  const loadPasswords = async () => {
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      refreshPasswords();
+    }
+  }, [isClient]);
+
+  const refreshPasswords = useCallback(async () => {
+    console.log("usePasswords: refreshPasswords called");
     try {
-      console.log("usePasswords: loadPasswords called with currentView:", currentView);
       setLoading(true);
-      
-      let view: 'all' | 'favorites' | 'inbox' | 'trash' = 'all';
-      let folderId: string | undefined;
-      let companyId: string | undefined;
-      
-      if (typeof currentView === 'object' && currentView.type === 'folder') {
-        view = 'all';
-        folderId = currentView.folderId;
-      } else if (typeof currentView === 'object' && currentView.type === 'company') {
-        view = 'all';
-        companyId = currentView.companyId;
-      } else {
-        view = currentView;
-      }
-      
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Loading passwords timeout')), 5000);
-      });
-      
-      const response = await Promise.race([
-        apiClient.getPasswords(view, folderId, companyId),
-        timeoutPromise
-      ]);
-      
-      console.log("usePasswords: API response:", response);
+      const response = await apiClient.getPasswords('all');
       if (response.data) {
         setPasswords(response.data);
-        console.log("usePasswords: Passwords set:", response.data);
-      } else if (response.error) {
-        console.error('Error loading passwords:', response.error);
-        toast.error('Ошибка загрузки паролей');
-        setPasswords([]); // Set empty array on error
+        console.log("usePasswords: Passwords refreshed:", response.data.length);
       }
     } catch (error) {
-      console.error('Error loading passwords:', error);
-      toast.error('Ошибка загрузки паролей');
-      setPasswords([]); // Set empty array on error
+      console.error('Error refreshing passwords:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Load passwords when view changes
-  useEffect(() => {
-    console.log("usePasswords: useEffect triggered, currentView:", currentView);
-    loadPasswords();
-  }, [currentView]);
-
-  // Add another useEffect to track currentView changes
-  useEffect(() => {
-    console.log("usePasswords: currentView changed to:", currentView);
-  }, [currentView]);
+  }, []);
 
   const toggleFavorite = async (id: string) => {
     try {
@@ -278,6 +246,6 @@ export function usePasswords() {
     addPassword,
     updatePassword,
     getPasswordsCount,
-    refreshPasswords: loadPasswords
+    refreshPasswords
   };
 }

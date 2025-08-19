@@ -1,141 +1,290 @@
-# 🚀 Welcome to Z.ai Code Scaffold
+# 🔐 Password Manager Pro
 
-A modern, production-ready web application scaffold powered by cutting-edge technologies, designed to accelerate your development with [Z.ai](https://chat.z.ai)'s AI-powered coding assistance.
+Современный и безопасный менеджер паролей с открытым исходным кодом, построенный на передовых технологиях для обеспечения максимальной защиты ваших данных.
 
-## ✨ Technology Stack
+## 🎯 Текущий статус проекта
 
-This scaffold provides a robust foundation built with:
+**Версия:** 1.0.0  
+**Статус:** Стабилизирован и готов к использованию  
+**Последнее обновление:** Декабрь 2024  
+
+### ✅ Выполненная стабилизация
+- **Исправлены множественные процессы dev сервера** - Оптимизирована работа сервера разработки
+- **Оптимизирована загрузка данных** - Устранены дублирующиеся API вызовы при старте
+- **Устранены консольные ошибки** - Исправлены предупреждения NextAuth и другие ошибки
+- **Настроена обработка состояний загрузки** - Правильное управление состояниями ожидания
+- **Исправлены сессии NextAuth** - Настроена правильная аутентификация
+
+## ✨ Возможности
+
+### 🔒 Безопасность и шифрование
+- **End-to-end шифрование** - Ваши пароли шифруются на стороне клиента
+- **Надёжное хранение** - Использование современных алгоритмов шифрования
+- **Защита мастер-паролем** - Дополнительный уровень безопасности
+- **Двухфакторная аутентификация** - Защита аккаунта 2FA
+
+### 📱 Управление паролями
+- **Полный CRUD функционал** - Создание, просмотр, редактирование, удаление
+- **Генератор паролей** - Создание надёжных паролей с настройками
+- **Валидация силы пароля** - Проверка надёжности паролей
+- **Копирование в один клик** - Быстрый доступ к логинам и паролям
+- **Автозаполнение** - Удобное заполнение форм на сайтах
+
+### 🗂️ Организация данных
+- **Система папок** - Организация паролей по категориям
+- **Управление компаниями** - Группировка по предприятиям и проектам
+- **Цвета и иконки** - Визуальная организация папок
+- **Избранные пароли** - Быстрый доступ к важным данным
+- **Корзина** - Безопасное удаление с возможностью восстановления
+
+### 🎨 Пользовательский интерфейс
+- **Адаптивный дизайн** - Работает на всех устройствах
+- **Тёмная/светлая тема** - Комфортная работа в любое время
+- **Два режима просмотра** - Сетка и таблица для удобства
+- **Быстрый поиск** - Мгновенный поиск по всем полям
+- **Фильтрация и сортировка** - Удобная навигация по данным
+
+### 🔧 Дополнительные функции
+- **Импорт/экспорт** - Перенос данных из других менеджеров паролей
+- **Совместный доступ** - Общий доступ к папкам с командой
+- **Админ-панель** - Управление пользователями и правами
+- **Аналитика безопасности** - Мониторинг состояния безопасности
+- **Резервное копирование** - Автоматическое создание резервных копий
+
+## 🚀 Технологический стек
 
 ### 🎯 Core Framework
-- **⚡ Next.js 15** - The React framework for production with App Router
-- **📘 TypeScript 5** - Type-safe JavaScript for better developer experience
-- **🎨 Tailwind CSS 4** - Utility-first CSS framework for rapid UI development
+- **⚡ Next.js 15** - React framework с App Router
+- **📘 TypeScript 5** - Типобезопасная разработка
+- **🎨 Tailwind CSS 4** - Утилитарный CSS framework
+- **🧩 shadcn/ui** - Качественные компоненты UI
 
-### 🧩 UI Components & Styling
-- **🧩 shadcn/ui** - High-quality, accessible components built on Radix UI
-- **🎯 Lucide React** - Beautiful & consistent icon library
-- **🌈 Framer Motion** - Production-ready motion library for React
-- **🎨 Next Themes** - Perfect dark mode in 2 lines of code
+### 🗄️ Backend и база данных
+- **🗄️ Prisma ORM** - Современный ORM для Node.js
+- **💾 SQLite** - Лёгкая и надёжная база данных
+- **🔐 NextAuth.js** - Полное решение для аутентификации
+- **🌐 REST API** - Структурированный API для всех операций
 
-### 📋 Forms & Validation
-- **🎣 React Hook Form** - Performant forms with easy validation
-- **✅ Zod** - TypeScript-first schema validation
+### 🔒 Безопасность
+- **🔐 Web Crypto API** - Нативное шифрование в браузере
+- **🛡️ AES-256-GCM** - Стандарт шифрования военного уровня
+- **🔑 PBKDF2** - Надёжное deriving ключей
+- **📱 2FA** - Двухфакторная аутентификация
 
-### 🔄 State Management & Data Fetching
-- **🐻 Zustand** - Simple, scalable state management
-- **🔄 TanStack Query** - Powerful data synchronization for React
-- **🌐 Axios** - Promise-based HTTP client
+### 🎨 UI/UX
+- **🎯 Lucide React** - Красивая библиотека иконок
+- **🌈 Framer Motion** - Плавные анимации
+- **🎨 Next Themes** - Переключение тем
+- **📱 Responsive Design** - Адаптивный дизайн
 
-### 🗄️ Database & Backend
-- **🗄️ Prisma** - Next-generation Node.js and TypeScript ORM
-- **🔐 NextAuth.js** - Complete open-source authentication solution
+## 🚀 Быстрый старт
 
-### 🎨 Advanced UI Features
-- **📊 TanStack Table** - Headless UI for building tables and datagrids
-- **🖱️ DND Kit** - Modern drag and drop toolkit for React
-- **📊 Recharts** - Redefined chart library built with React and D3
-- **🖼️ Sharp** - High performance image processing
+### Требования
+- Node.js 18+ 
+- npm или yarn
 
-### 🌍 Internationalization & Utilities
-- **🌍 Next Intl** - Internationalization library for Next.js
-- **📅 Date-fns** - Modern JavaScript date utility library
-- **🪝 ReactUse** - Collection of essential React hooks for modern development
-
-## 🎯 Why This Scaffold?
-
-- **🏎️ Fast Development** - Pre-configured tooling and best practices
-- **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
-- **🔒 Type Safety** - Full TypeScript configuration with Zod validation
-- **📱 Responsive** - Mobile-first design principles with smooth animations
-- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
-- **🔐 Auth Included** - NextAuth.js for secure authentication flows
-- **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
-- **🌍 i18n Ready** - Multi-language support with Next Intl
-- **🚀 Production Ready** - Optimized build and deployment settings
-- **🤖 AI-Friendly** - Structured codebase perfect for AI assistance
-
-## 🚀 Quick Start
-
+### Установка
 ```bash
-# Install dependencies
+# Клонирование репозитория
+git clone <repository-url>
+cd password-manager
+
+# Установка зависимостей
 npm install
 
-# Start development server
+# Настройка переменных окружения
+cp .env.example .env
+# Отредактируйте .env файл с вашими настройками
+
+# Инициализация базы данных
+npm run db:push
+
+# Запуск разработческого сервера
 npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your application running.
+Приложение будет доступно по адресу [http://localhost:3000](http://localhost:3000)
 
-## 🤖 Powered by Z.ai
+### Демо-доступ
+Для разработки настроен автоматический вход:
+- **Email:** admin@passflow.ru
+- **Пароль:** XZMx#DN7ex#*7Wpp
 
-This scaffold is optimized for use with [Z.ai](https://chat.z.ai) - your AI assistant for:
+### Команды
+```bash
+# Разработка
+npm run dev          # Запуск dev сервера
+npm run build        # Сборка для продакшена
+npm run start        # Запуск продакшен-сервера
+npm run lint         # Проверка кода
 
-- **💻 Code Generation** - Generate components, pages, and features instantly
-- **🎨 UI Development** - Create beautiful interfaces with AI assistance  
-- **🔧 Bug Fixing** - Identify and resolve issues with intelligent suggestions
-- **📝 Documentation** - Auto-generate comprehensive documentation
-- **🚀 Optimization** - Performance improvements and best practices
+# База данных
+npm run db:push      # Применение схемы к БД
+npm run db:studio    # Запуск Prisma Studio
+npm run db:seed      # Заполнение БД тестовыми данными
 
-Ready to build something amazing? Start chatting with Z.ai at [chat.z.ai](https://chat.z.ai) and experience the future of AI-powered development!
+# Другое
+npm run type-check   # Проверка типов
+npm run format       # Форматирование кода
+```
 
-## 📁 Project Structure
+## 📁 Структура проекта
 
 ```
 src/
-├── app/                 # Next.js App Router pages
-├── components/          # Reusable React components
-│   └── ui/             # shadcn/ui components
-├── hooks/              # Custom React hooks
-└── lib/                # Utility functions and configurations
+├── app/                    # Next.js App Router
+│   ├── api/               # API маршруты
+│   │   ├── auth/          # Аутентификация
+│   │   ├── passwords/     # Управление паролями
+│   │   ├── folders/       # Управление папками
+│   │   ├── companies/     # Управление компаниями
+│   │   └── settings/      # Настройки
+│   ├── login/             # Страница входа
+│   ├── register/          # Страница регистрации
+│   └── layout.tsx         # Корневой layout
+├── components/            # React компоненты
+│   ├── ui/               # shadcn/ui компоненты
+│   ├── passwords/        # Компоненты паролей
+│   ├── folders/          # Компоненты папок
+│   ├── companies/        # Компоненты компаний
+│   ├── auth/             # Компоненты аутентификации
+│   ├── layout/           # Layout компоненты
+│   └── settings/         # Компоненты настроек
+├── hooks/                # Custom React hooks
+│   ├── use-passwords.ts  # Хук управления паролями
+│   └── use-auth.ts       # Хук аутентификации
+├── lib/                  # Утилиты и конфигурации
+│   ├── db/              # База данных
+│   ├── auth/            # Аутентификация
+│   ├── encryption/      # Шифрование
+│   └── utils/           # Вспомогательные функции
+└── types/                # TypeScript типы
 ```
 
-## 🎨 Available Features & Components
+## 🔧 Конфигурация
 
-This scaffold includes a comprehensive set of modern web development tools:
+### Переменные окружения (.env)
+```env
+# База данных
+DATABASE_URL="file:./dev.db"
 
-### 🧩 UI Components (shadcn/ui)
-- **Layout**: Card, Separator, Aspect Ratio, Resizable Panels
-- **Forms**: Input, Textarea, Select, Checkbox, Radio Group, Switch
-- **Feedback**: Alert, Toast (Sonner), Progress, Skeleton
-- **Navigation**: Breadcrumb, Menubar, Navigation Menu, Pagination
-- **Overlay**: Dialog, Sheet, Popover, Tooltip, Hover Card
-- **Data Display**: Badge, Avatar, Calendar
+# NextAuth.js
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret-key-at-least-32-characters-long"
 
-### 📊 Advanced Data Features
-- **Tables**: Powerful data tables with sorting, filtering, pagination (TanStack Table)
-- **Charts**: Beautiful visualizations with Recharts
-- **Forms**: Type-safe forms with React Hook Form + Zod validation
+# Шифрование
+ENCRYPTION_SECRET="your-super-secret-encryption-key-that-is-at-least-32-characters-long"
 
-### 🎨 Interactive Features
-- **Animations**: Smooth micro-interactions with Framer Motion
-- **Drag & Drop**: Modern drag-and-drop functionality with DND Kit
-- **Theme Switching**: Built-in dark/light mode support
+# Окружение
+NODE_ENV="development"
+```
 
-### 🔐 Backend Integration
-- **Authentication**: Ready-to-use auth flows with NextAuth.js
-- **Database**: Type-safe database operations with Prisma
-- **API Client**: HTTP requests with Axios + TanStack Query
-- **State Management**: Simple and scalable with Zustand
+### Настройка базы данных
+Приложение использует SQLite с Prisma ORM. Схема базы данных включает:
 
-### 🌍 Production Features
-- **Internationalization**: Multi-language support with Next Intl
-- **Image Optimization**: Automatic image processing with Sharp
-- **Type Safety**: End-to-end TypeScript with Zod validation
-- **Essential Hooks**: 100+ useful React hooks with ReactUse for common patterns
+- **Users** - Пользователи системы
+- **Passwords** - Пароли с шифрованием
+- **Folders** - Папки для организации
+- **Companies** - Компании/организации
+- **UserSettings** - Настройки пользователей
 
-## 🤝 Get Started with Z.ai
+## 🎯 Основные возможности
 
-1. **Clone this scaffold** to jumpstart your project
-2. **Visit [chat.z.ai](https://chat.z.ai)** to access your AI coding assistant
-3. **Start building** with intelligent code generation and assistance
-4. **Deploy with confidence** using the production-ready setup
+### 🔐 Управление паролями
+- Создание надёжных паролей с генератором
+- Хранение логинов, паролей, URL и заметок
+- Автоматическая валидация силы пароля
+- Быстрое копирование в буфер обмена
+- История изменения паролей
+
+### 🗂️ Организация
+- Создание иерархической структуры папок
+- Привязка паролей к компаниям
+- Цветовая маркировка папок
+- Поиск и фильтрация по всем параметрам
+- Избранные пароли для быстрого доступа
+
+### 🔒 Безопасность
+- Шифрование всех паролей перед сохранением
+- Дополнительная защита мастер-паролем
+- Двухфакторная аутентификация
+- Автоматическая блокировка при бездействии
+- Защита от брутфорс-атак
+
+### 🌐 Совместная работа
+- Общий доступ к папкам с командой
+- Управление правами доступа
+- Аудит действий пользователей
+- Синхронизация между устройствами
+- Резервное копирование и восстановление
+
+## 🚀 Развертывание
+
+### Vercel (рекомендуется)
+```bash
+# Подключение к Vercel
+npm i -g vercel
+vercel
+
+# Настройка переменных окружения в Vercel dashboard
+# Развертывание
+vercel --prod
+```
+
+### Docker
+```bash
+# Сборка образа
+docker build -t password-manager .
+
+# Запуск контейнера
+docker run -p 3000:3000 password-manager
+```
+
+### Самостоятельный сервер
+```bash
+# Сборка приложения
+npm run build
+
+# Запуск в production режиме
+npm start
+```
+
+## 🤝 Вклад в разработку
+
+Мы приветствуем вклад в развитие проекта! Пожалуйста, ознакомьтесь с:
+
+- [Чек-листом разработки](./DEVELOPMENT_CHECKLIST.md) - Текущие задачи и план развития
+- [Руководством по внесению изменений](./CONTRIBUTING.md) - Как внести свой вклад
+- [Кодексом поведения](./CODE_OF_CONDUCT.md) - Правила сообщества
+
+### Как начать разработку
+1. Форкните репозиторий
+2. Создайте ветку для вашей функции (`git checkout -b feature/amazing-feature`)
+3. Внесите изменения (`git commit -m 'Add amazing feature'`)
+4. Отправьте изменения (`git push origin feature/amazing-feature`)
+5. Откройте Pull Request
+
+## 📄 Лицензия
+
+Этот проект лицензирован под MIT License - подробности в файле [LICENSE](./LICENSE).
+
+## 🙏 Благодарности
+
+- **Next.js** - За отличный React framework
+- **shadcn/ui** - За красивые и доступные компоненты
+- **Prisma** - За современный ORM
+- **Tailwind CSS** - За утилитарный CSS framework
+- **Сообществу** - За поддержку и вклад в развитие
+
+## 📞 Поддержка
+
+Если у вас возникли вопросы или проблемы:
+
+- 📧 Email: support@passwordmanager.pro
+- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
+- 💬 Discord: [Наш Discord сервер](https://discord.gg/passwordmanager)
+- 📖 Документация: [Документация](https://docs.passwordmanager.pro)
 
 ---
 
-Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀
+🔐 **Password Manager Pro** - Стабилизированное и надёжное решение для управления вашими паролями
