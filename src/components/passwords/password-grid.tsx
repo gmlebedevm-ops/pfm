@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PasswordCard } from "./password-card";
+import { PasswordTable } from "./password-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +13,7 @@ import {
   Filter,
   SortAsc,
   Grid,
+  Table,
   List,
   Plus,
   Trash2,
@@ -35,7 +37,7 @@ interface PasswordGridProps {
     folder?: string;
     folderId?: string;
   }>;
-  viewMode?: "grid" | "list";
+  viewMode?: "grid" | "table";
   currentView?: ViewType;
   onAddPassword?: () => void;
   onToggleFavorite?: (id: string) => void;
@@ -43,6 +45,7 @@ interface PasswordGridProps {
   onRestore?: (id: string) => void;
   onDelete?: (id: string) => void;
   onEdit?: (password: any) => void;
+  onViewModeChange?: (mode: "grid" | "table") => void;
 }
 
 export function PasswordGrid({ 
@@ -54,7 +57,8 @@ export function PasswordGrid({
   onToggleTrash,
   onRestore,
   onDelete,
-  onEdit
+  onEdit,
+  onViewModeChange
 }: PasswordGridProps) {
   const [isClient, setIsClient] = useState(false);
   const [sortBy, setSortBy] = useState("name");
@@ -174,25 +178,27 @@ export function PasswordGrid({
         )}
 
         {/* Сетка паролей - показываем скелетоны на сервере */}
-        <div className={viewMode === "grid" ? 
-          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : 
-          "space-y-2"
-        }>
-          {passwords.slice(0, 8).map((_, index) => (
-            <div key={index} className="bg-muted rounded-lg p-4 animate-pulse">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-muted-foreground/20 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-muted-foreground/20 rounded w-3/4 mb-1"></div>
-                  <div className="h-3 bg-muted-foreground/20 rounded w-1/2"></div>
+        <div className="flex justify-between items-center mb-4">
+          <div className={viewMode === "grid" ? 
+            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : 
+            "space-y-2"
+          }>
+            {passwords.slice(0, 8).map((_, index) => (
+              <div key={index} className="bg-muted rounded-lg p-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-muted-foreground/20 rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-muted-foreground/20 rounded w-3/4 mb-1"></div>
+                    <div className="h-3 bg-muted-foreground/20 rounded w-1/2"></div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-muted-foreground/20 rounded w-full"></div>
+                  <div className="h-3 bg-muted-foreground/20 rounded w-2/3"></div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="h-3 bg-muted-foreground/20 rounded w-full"></div>
-                <div className="h-3 bg-muted-foreground/20 rounded w-2/3"></div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -256,6 +262,26 @@ export function PasswordGrid({
             Фильтр
           </Button>
           
+          {/* Переключатель режимов просмотра */}
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              className="h-9 px-3 rounded-r-none"
+              onClick={() => onViewModeChange?.("grid")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              className="h-9 px-3 rounded-l-none"
+              onClick={() => onViewModeChange?.("table")}
+            >
+              <Table className="h-4 w-4" />
+            </Button>
+          </div>
+          
           {showAddButton && (
             <Button onClick={onAddPassword}>
               <Plus className="h-4 w-4 mr-2" />
@@ -312,7 +338,7 @@ export function PasswordGrid({
         </div>
       )}
 
-      {/* Сетка паролей */}
+      {/* Отображение паролей */}
       {sortedPasswords.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="mb-4">
@@ -342,23 +368,32 @@ export function PasswordGrid({
           )}
         </div>
       ) : (
-        <div className={viewMode === "grid" ? 
-          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : 
-          "space-y-2"
-        }>
-          {sortedPasswords.map((password) => (
-            <PasswordCard
-              key={password.id}
-              password={password}
-              className={viewMode === "list" ? "mb-2" : ""}
+        <>
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {sortedPasswords.map((password) => (
+                <PasswordCard
+                  key={password.id}
+                  password={password}
+                  onToggleFavorite={onToggleFavorite}
+                  onToggleTrash={onToggleTrash}
+                  onRestore={onRestore}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <PasswordTable
+              passwords={sortedPasswords}
               onToggleFavorite={onToggleFavorite}
               onToggleTrash={onToggleTrash}
               onRestore={onRestore}
               onEdit={onEdit}
               onDelete={onDelete}
             />
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

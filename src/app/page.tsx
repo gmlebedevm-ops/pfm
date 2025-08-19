@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+console.log("PAGE TSX: Module loaded");
+
 import { PasswordGrid } from "@/components/passwords/password-grid";
 import { PasswordModal } from "@/components/passwords/password-modal";
 import { AppLayout } from "@/components/app-layout";
@@ -15,8 +18,12 @@ import { AdministrationManagement } from "@/components/administration/administra
 import { SecurityDashboard } from "@/components/analytics/security-dashboard";
 import { SettingsPage as SettingsComponent } from "@/components/settings/settings-page";
 
+
 export default function Home() {
+  console.log("Home: Component rendering");
   const { data: session, status } = useSession();
+  console.log("Home: session:", session);
+  console.log("Home: status:", status);
   const router = useRouter();
   const {
     passwords,
@@ -31,21 +38,40 @@ export default function Home() {
     emptyTrash,
     addPassword,
     updatePassword,
-    getPasswordsCount
+    getPasswordsCount,
+    refreshPasswords
   } = usePasswords();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<any>(null);
-  const [isInitialized, setIsInitialized] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Check authentication status
+  // Auto-login for development
   useEffect(() => {
     if (status === "loading") return;
     
     if (status === "unauthenticated") {
-      router.push("/login");
+      // Auto-login for development environment
+      if (process.env.NODE_ENV === "development") {
+        const autoLogin = async () => {
+          try {
+            await signIn("credentials", {
+              email: "admin@passflow.ru",
+              password: "XZMx#DN7ex#*7Wpp",
+              redirect: false,
+            });
+          } catch (error) {
+            console.error("Auto-login failed:", error);
+            router.push("/login");
+          }
+        };
+        autoLogin();
+      } else {
+        router.push("/login");
+      }
       return;
     }
     
@@ -56,7 +82,7 @@ export default function Home() {
 
   // Initialize default user on component mount
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || status !== "authenticated") return;
     
     const initializeApp = async () => {
       try {
@@ -70,13 +96,11 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error initializing app:', error);
-      } finally {
-        setIsInitialized(true);
       }
     };
 
     initializeApp();
-  }, [isInitialized]);
+  }, [isInitialized, status]);
 
   const handleAddPassword = () => {
     setEditingPassword(null);
@@ -112,6 +136,10 @@ export default function Home() {
     setCurrentView("companies-management");
   };
 
+  const handleViewModeChange = (mode: "grid" | "table") => {
+    setViewMode(mode);
+  };
+
   // Reset selected folder ID when not in folders-management view
   useEffect(() => {
     if (currentView !== "folders-management") {
@@ -128,7 +156,15 @@ export default function Home() {
 
   if (status === "loading" || !isInitialized || loading) {
     return (
-      <AppLayout user={{ name: 'Debug User', email: 'debug@example.com' }}>
+      <AppLayout 
+        user={{ name: 'Debug User', email: 'debug@example.com' }}
+        onSettingsClick={handleToggleSettings}
+        onEditFolder={handleEditFolder}
+        onEditCompany={handleEditCompany}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        passwordsCount={getPasswordsCount()}
+      >
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <Skeleton className="h-8 w-32" />
@@ -170,6 +206,7 @@ export default function Home() {
         <>
           <PasswordGrid 
             passwords={passwords}
+            viewMode={viewMode}
             currentView={currentView}
             onAddPassword={handleAddPassword}
             onToggleFavorite={toggleFavorite}
@@ -177,6 +214,7 @@ export default function Home() {
             onRestore={restore}
             onDelete={deletePermanent}
             onEdit={handleEditPassword}
+            onViewModeChange={handleViewModeChange}
           />
           
           <PasswordModal
