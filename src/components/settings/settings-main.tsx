@@ -43,7 +43,6 @@ interface SettingsMainProps {
 }
 
 export function SettingsMain({ isOpen, onClose, user }: SettingsMainProps) {
-  const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
 
@@ -203,590 +202,249 @@ export function SettingsMain({ isOpen, onClose, user }: SettingsMainProps) {
         )}
 
         {/* Основное содержимое */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Боковая панель с вкладками */}
-          <div className="w-64 border-r border-border bg-muted/30">
-            <div className="p-4">
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Разделы</h3>
-              <nav className="space-y-1">
-                <button
-                  onClick={() => setActiveTab("profile")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "profile" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <User className="h-4 w-4" />
-                  Профиль
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("security")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "security" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Shield className="h-4 w-4" />
-                  Безопасность
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("appearance")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "appearance" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Palette className="h-4 w-4" />
-                  Внешний вид
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("notifications")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "notifications" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Bell className="h-4 w-4" />
-                  Уведомления
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("data")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "data" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Download className="h-4 w-4" />
-                  Данные
-                </button>
-              </nav>
-            </div>
-          </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          <Tabs defaultValue="profile" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="profile">Профиль</TabsTrigger>
+              <TabsTrigger value="security">Безопасность</TabsTrigger>
+              <TabsTrigger value="appearance">Внешний вид</TabsTrigger>
+              <TabsTrigger value="notifications">Уведомления</TabsTrigger>
+              <TabsTrigger value="data">Данные</TabsTrigger>
+            </TabsList>
 
-          {/* Содержимое выбранной вкладки */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Профиль */}
-            {activeTab === "profile" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Профиль пользователя</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Управление основной информацией профиля
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Основная информация</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-16 w-16">
-                        <AvatarImage src={profile.avatar} alt={profile.name} />
-                        <AvatarFallback className="text-lg">
-                          {profile.name?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <Button variant="outline" size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Изменить фото
-                        </Button>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          JPG, GIF или PNG. Максимальный размер 1MB
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Имя</Label>
-                        <Input
-                          id="name"
-                          value={profile.name}
-                          onChange={(e) => setProfile({...profile, name: e.target.value})}
-                          placeholder="Введите имя"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={profile.email}
-                          onChange={(e) => setProfile({...profile, email: e.target.value})}
-                          placeholder="Введите email"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="bio">О себе</Label>
-                      <Textarea
-                        id="bio"
-                        value={profile.bio}
-                        onChange={(e) => setProfile({...profile, bio: e.target.value})}
-                        placeholder="Расскажите о себе..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="timezone">Часовой пояс</Label>
-                        <Select value={profile.timezone} onValueChange={(value) => setProfile({...profile, timezone: value})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
-                            <SelectItem value="Europe/London">Лондон (UTC+0)</SelectItem>
-                            <SelectItem value="America/New_York">Нью-Йорк (UTC-5)</SelectItem>
-                            <SelectItem value="Asia/Tokyo">Токио (UTC+9)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="language">Язык</Label>
-                        <Select value={profile.language} onValueChange={(value) => setProfile({...profile, language: value})}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ru">Русский</SelectItem>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="de">Deutsch</SelectItem>
-                            <SelectItem value="fr">Français</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+            <TabsContent value="profile" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Профиль пользователя</h3>
+                <p className="text-sm text-muted-foreground">
+                  Управление основной информацией профиля
+                </p>
               </div>
-            )}
 
-            {/* Безопасность */}
-            {activeTab === "security" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Безопасность</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Управление настройками безопасности и аутентификации
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Аутентификация</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Двухфакторная аутентификация</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Дополнительный уровень безопасности для вашего аккаунта
-                        </p>
-                      </div>
-                      <Switch
-                        checked={security.twoFactorEnabled}
-                        onCheckedChange={(checked) => setSecurity({...security, twoFactorEnabled: checked})}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Главный пароль</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {security.masterPasswordSet ? "Установлен" : "Не установлен"}
-                        </p>
-                      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Основная информация</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage src={profile.avatar} alt={profile.name} />
+                      <AvatarFallback className="text-lg">
+                        {profile.name?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
                       <Button variant="outline" size="sm">
-                        <Key className="h-4 w-4 mr-2" />
-                        {security.masterPasswordSet ? "Изменить" : "Установить"}
+                        <Plus className="h-4 w-4 mr-2" />
+                        Изменить фото
                       </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        JPG, GIF или PNG. Максимальный размер 1MB
+                      </p>
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="sessionTimeout">Тайм-аут сессии (минуты)</Label>
-                      <Select 
-                        value={security.sessionTimeout.toString()} 
-                        onValueChange={(value) => setSecurity({...security, sessionTimeout: parseInt(value)})}
-                      >
+                      <Label htmlFor="name">Имя</Label>
+                      <Input
+                        id="name"
+                        value={profile.name}
+                        onChange={(e) => setProfile({...profile, name: e.target.value})}
+                        placeholder="Введите имя"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={profile.email}
+                        onChange={(e) => setProfile({...profile, email: e.target.value})}
+                        placeholder="Введите email"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">О себе</Label>
+                    <Textarea
+                      id="bio"
+                      value={profile.bio}
+                      onChange={(e) => setProfile({...profile, bio: e.target.value})}
+                      placeholder="Расскажите о себе..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Часовой пояс</Label>
+                      <Select value={profile.timezone} onValueChange={(value) => setProfile({...profile, timezone: value})}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="15">15 минут</SelectItem>
-                          <SelectItem value="30">30 минут</SelectItem>
-                          <SelectItem value="60">1 час</SelectItem>
-                          <SelectItem value="120">2 часа</SelectItem>
-                          <SelectItem value="0">Никогда</SelectItem>
+                          <SelectItem value="Europe/Moscow">Москва (UTC+3)</SelectItem>
+                          <SelectItem value="Europe/London">Лондон (UTC+0)</SelectItem>
+                          <SelectItem value="America/New_York">Нью-Йорк (UTC-5)</SelectItem>
+                          <SelectItem value="Asia/Tokyo">Токио (UTC+9)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Автоматическая блокировка</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Автоматическая блокировка</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Блокировать приложение при неактивности
-                        </p>
-                      </div>
-                      <Switch
-                        checked={security.autoLock}
-                        onCheckedChange={(checked) => setSecurity({...security, autoLock: checked})}
-                      />
-                    </div>
-
-                    {security.autoLock && (
-                      <div className="space-y-2">
-                        <Label htmlFor="autoLockTimeout">Время до блокировки (минуты)</Label>
-                        <Select 
-                          value={security.autoLockTimeout.toString()} 
-                          onValueChange={(value) => setSecurity({...security, autoLockTimeout: parseInt(value)})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 минута</SelectItem>
-                            <SelectItem value="5">5 минут</SelectItem>
-                            <SelectItem value="10">10 минут</SelectItem>
-                            <SelectItem value="30">30 минут</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Внешний вид */}
-            {activeTab === "appearance" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Внешний вид</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Настройка внешнего вида приложения
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Тема</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
                     <div className="space-y-2">
+                      <Label htmlFor="language">Язык</Label>
+                      <Select value={profile.language} onValueChange={(value) => setProfile({...profile, language: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ru">Русский</SelectItem>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="de">Deutsch</SelectItem>
+                          <SelectItem value="fr">Français</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Безопасность</h3>
+                <p className="text-sm text-muted-foreground">
+                  Управление настройками безопасности и аутентификации
+                </p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Аутентификация</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Двухфакторная аутентификация</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Дополнительный уровень безопасности для вашего аккаунта
+                      </p>
+                    </div>
+                    <Switch
+                      checked={security.twoFactorEnabled}
+                      onCheckedChange={(checked) => setSecurity({...security, twoFactorEnabled: checked})}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Главный пароль</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {security.masterPasswordSet ? "Установлен" : "Не установлен"}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Key className="h-4 w-4 mr-2" />
+                      {security.masterPasswordSet ? "Изменить" : "Установить"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="appearance" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Внешний вид</h3>
+                <p className="text-sm text-muted-foreground">
+                  Настройка внешнего вида приложения
+                </p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Тема</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
                       <Label>Тема оформления</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          onClick={() => setAppearance({...appearance, theme: "light"})}
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                            appearance.theme === "light" 
-                              ? "border-primary bg-primary/10" 
-                              : "border-border hover:border-primary/50"
-                          )}
-                        >
-                          <Sun className="h-6 w-6" />
-                          <span className="text-sm">Светлая</span>
-                        </button>
-                        <button
-                          onClick={() => setAppearance({...appearance, theme: "dark"})}
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                            appearance.theme === "dark" 
-                              ? "border-primary bg-primary/10" 
-                              : "border-border hover:border-primary/50"
-                          )}
-                        >
-                          <Moon className="h-6 w-6" />
-                          <span className="text-sm">Темная</span>
-                        </button>
-                        <button
-                          onClick={() => setAppearance({...appearance, theme: "system"})}
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors",
-                            appearance.theme === "system" 
-                              ? "border-primary bg-primary/10" 
-                              : "border-border hover:border-primary/50"
-                          )}
-                        >
-                          <Monitor className="h-6 w-6" />
-                          <span className="text-sm">Системная</span>
-                        </button>
-                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Выберите тему для приложения
+                      </p>
                     </div>
+                    <Select value={appearance.theme} onValueChange={(value) => setAppearance({...appearance, theme: value})}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Светлая</SelectItem>
+                        <SelectItem value="dark">Тёмная</SelectItem>
+                        <SelectItem value="system">Системная</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                    <div className="space-y-2">
-                      <Label>Акцентный цвет</Label>
-                      <div className="grid grid-cols-6 gap-2">
-                        {["blue", "green", "red", "purple", "orange", "pink"].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setAppearance({...appearance, accentColor: color})}
-                            className={cn(
-                              "w-8 h-8 rounded-full border-2 transition-colors",
-                              appearance.accentColor === color 
-                                ? "border-primary" 
-                                : "border-border hover:border-primary/50"
-                            )}
-                            style={{ backgroundColor: `var(--${color}-500)` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Отображение</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fontSize">Размер шрифта</Label>
-                      <Select 
-                        value={appearance.fontSize} 
-                        onValueChange={(value) => setAppearance({...appearance, fontSize: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="small">Маленький</SelectItem>
-                          <SelectItem value="medium">Средний</SelectItem>
-                          <SelectItem value="large">Большой</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="density">Плотность интерфейса</Label>
-                      <Select 
-                        value={appearance.density} 
-                        onValueChange={(value) => setAppearance({...appearance, density: value})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="compact">Компактный</SelectItem>
-                          <SelectItem value="comfortable">Комфортный</SelectItem>
-                          <SelectItem value="spacious">Просторный</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Свернутая боковая панель</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Отображать боковую панель в свернутом виде
-                        </p>
-                      </div>
-                      <Switch
-                        checked={appearance.sidebarCollapsed}
-                        onCheckedChange={(checked) => setAppearance({...appearance, sidebarCollapsed: checked})}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+            <TabsContent value="notifications" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Уведомления</h3>
+                <p className="text-sm text-muted-foreground">
+                  Управление уведомлениями и оповещениями
+                </p>
               </div>
-            )}
 
-            {/* Уведомления */}
-            {activeTab === "notifications" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Уведомления</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Управление уведомлениями и оповещениями
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Email уведомления</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Email уведомления</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Получать уведомления по электронной почте
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.emailNotifications}
-                        onCheckedChange={(checked) => setNotifications({...notifications, emailNotifications: checked})}
-                      />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Email уведомления</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Email уведомления</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Получать уведомления по email
+                      </p>
                     </div>
+                    <Switch
+                      checked={notifications.emailNotifications}
+                      onCheckedChange={(checked) => setNotifications({...notifications, emailNotifications: checked})}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Истечение срока пароля</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Уведомлять об истекающих паролях
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.passwordExpiry}
-                        onCheckedChange={(checked) => setNotifications({...notifications, passwordExpiry: checked})}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Оповещения безопасности</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Уведомлять о событиях безопасности
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.securityAlerts}
-                        onCheckedChange={(checked) => setNotifications({...notifications, securityAlerts: checked})}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Общий доступ</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Уведомлять о предоставлении доступа
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.sharedAccess}
-                        onCheckedChange={(checked) => setNotifications({...notifications, sharedAccess: checked})}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Еженедельные отчеты</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Получать еженедельные отчеты об активности
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.weeklyReports}
-                        onCheckedChange={(checked) => setNotifications({...notifications, weeklyReports: checked})}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Push уведомления</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Push уведомления</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Получать push уведомления в браузере
-                        </p>
-                      </div>
-                      <Switch
-                        checked={notifications.pushNotifications}
-                        onCheckedChange={(checked) => setNotifications({...notifications, pushNotifications: checked})}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+            <TabsContent value="data" className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Управление данными</h3>
+                <p className="text-sm text-muted-foreground">
+                  Импорт, экспорт и управление вашими данными
+                </p>
               </div>
-            )}
 
-            {/* Данные */}
-            {activeTab === "data" && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Управление данными</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Импорт, экспорт и управление вашими данными
-                  </p>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Резервное копирование</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Экспорт данных</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Скачать все ваши пароли и настройки в зашифрованном файле
-                        </p>
-                      </div>
-                      <Button>
-                        <Download className="h-4 w-4 mr-2" />
-                        Экспорт
-                      </Button>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Резервное копирование</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Создать резервную копию</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Скачать все ваши данные в зашифрованном виде
+                      </p>
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">Импорт данных</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Импортировать пароли из файла резервной копии
-                        </p>
-                      </div>
-                      <Button variant="outline">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Импорт
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Опасные операции</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-destructive">Удалить аккаунт</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Безвозвратно удалить ваш аккаунт и все данные
-                        </p>
-                      </div>
-                      <Button variant="destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Удалить
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
+                    <Button variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Экспорт
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

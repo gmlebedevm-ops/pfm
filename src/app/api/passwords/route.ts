@@ -110,6 +110,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title and password are required' }, { status: 400 });
     }
 
+    // Проверка существования folderId, если он предоставлен и не равен null
+    if (folderId && folderId !== "none") {
+      const folder = await db.folder.findUnique({
+        where: { id: folderId }
+      });
+      if (!folder) {
+        return NextResponse.json({ error: 'Folder not found' }, { status: 400 });
+      }
+    }
+
+    // Проверка существования companyId, если он предоставлен и не равен null
+    if (companyId && companyId !== "none") {
+      const company = await db.company.findUnique({
+        where: { id: companyId }
+      });
+      if (!company) {
+        return NextResponse.json({ error: 'Company not found' }, { status: 400 });
+      }
+    }
+
+    // Подготовка данных для создания - преобразуем "none" в null
+    const finalFolderId = folderId && folderId !== "none" ? folderId : null;
+    const finalCompanyId = companyId && companyId !== "none" ? companyId : null;
+
     // Шифрование пароля
     let encryptedPassword: string = '';
     let iv: string = '';
@@ -138,8 +162,8 @@ export async function POST(request: NextRequest) {
         favorite: favorite || false,
         inTrash: false,
         ownerId: user.id,
-        folderId,
-        companyId
+        folderId: finalFolderId,
+        companyId: finalCompanyId
       },
       include: {
         folder: true,

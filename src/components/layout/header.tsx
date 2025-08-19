@@ -24,8 +24,7 @@ import {
   Moon,
   User,
   Settings,
-  LogOut,
-  Plus
+  LogOut
 } from "lucide-react";
 
 interface HeaderProps {
@@ -85,12 +84,6 @@ export function Header({ className, user, onSettingsClick }: HeaderProps) {
 
           {/* Правая часть - действия пользователя */}
           <div className="flex items-center space-x-2 flex-shrink-0">
-            {/* Кнопка добавления */}
-            <Button size="sm" className="hidden sm:flex">
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить пароль
-            </Button>
-
             {/* Уведомления */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

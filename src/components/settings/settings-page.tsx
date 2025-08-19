@@ -13,6 +13,16 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   User, 
   Shield, 
@@ -42,9 +52,17 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ onBack, user }: SettingsPageProps) {
-  const [activeTab, setActiveTab] = useState("profile");
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [twoFactorModalOpen, setTwoFactorModalOpen] = useState(false);
+  const [twoFactorData, setTwoFactorData] = useState<{
+    secret?: string;
+    qrCodeUrl?: string;
+  }>({});
 
   // Состояние профиля
   const [profile, setProfile] = useState({
@@ -90,13 +108,43 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
     setSaveStatus("saving");
     
     try {
-      // Здесь будет логика сохранения настроек
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Имитация сохранения
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profile,
+          security,
+          appearance,
+          notifications
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      const result = await response.json();
       
-      setSaveStatus("success");
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      if (result.success) {
+        setSaveStatus("success");
+        toast({
+          title: "Успешно",
+          description: "Настройки успешно сохранены",
+        });
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } else {
+        throw new Error(result.message || 'Failed to save settings');
+      }
     } catch (error) {
+      console.error('Error saving settings:', error);
       setSaveStatus("error");
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при сохранении настроек",
+        variant: "destructive",
+      });
       setTimeout(() => setSaveStatus("idle"), 2000);
     } finally {
       setLoading(false);
@@ -141,21 +189,190 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
     });
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setAvatarLoading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await fetch('/api/upload-avatar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload avatar');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setProfile(prev => ({ ...prev, avatar: result.avatarUrl }));
+        toast({
+          title: "Успешно",
+          description: "Аватар успешно загружен",
+        });
+      } else {
+        throw new Error(result.message || 'Failed to upload avatar');
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: "Ошибка",
+        description: "Ошибка при загрузке аватара",
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExportLoading(true);
+    
+    try {
+      const response = await fetch('/api/export-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Создание и скачивание файла
+        const blob = new Blob([result.data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Успешно",
+          description: "Данные успешно экспортированы",
+        });
+      } else {
+        throw new Error(result.message || 'Failed to export data');
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: "Ошибка",
+        description: "Ошибка при экспорте данных",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('importFile', file);
+
+      const response = await fetch('/api/import-data', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import data');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Успешно",
+          description: `Данные успешно импортированы:\nПароли: ${result.imported.passwords}\nПапки: ${result.imported.folders}\nКомпании: ${result.imported.companies}`,
+        });
+      } else {
+        throw new Error(result.message || 'Failed to import data');
+      }
+    } catch (error) {
+      console.error('Error importing data:', error);
+      toast({
+        title: "Ошибка",
+        description: "Ошибка при импорте данных",
+        variant: "destructive",
+      });
+    } finally {
+      setImportLoading(false);
+      // Сброс значения input для возможности повторного выбора того же файла
+      event.target.value = '';
+    }
+  };
+
+  const handleTwoFactorToggle = async (enabled: boolean) => {
+    try {
+      const response = await fetch('/api/settings/2fa', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update 2FA settings');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSecurity(prev => ({ ...prev, twoFactorEnabled: result.enabled }));
+        
+        if (result.enabled) {
+          setTwoFactorData({
+            secret: result.secret,
+            qrCodeUrl: result.qrCodeUrl,
+          });
+          setTwoFactorModalOpen(true);
+        }
+        
+        toast({
+          title: "Успешно",
+          description: result.message,
+        });
+      } else {
+        throw new Error(result.message || 'Failed to update 2FA settings');
+      }
+    } catch (error) {
+      console.error('Error updating 2FA settings:', error);
+      toast({
+        title: "Ошибка",
+        description: "Ошибка при обновлении настроек 2FA",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Заголовок страницы */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Назад
-            </Button>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold">Настройки</h1>
-            <p className="text-muted-foreground">Управление профилем и предпочтениями</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Настройки</h1>
+          <p className="text-muted-foreground">Управление профилем и предпочтениями</p>
         </div>
         
         <div className="flex items-center gap-2">
@@ -196,97 +413,41 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
       )}
 
       {/* Основное содержимое */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Боковая панель с вкладками */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Разделы</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <nav className="space-y-1">
-                <button
-                  onClick={() => setActiveTab("profile")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "profile" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <User className="h-4 w-4" />
-                  Профиль
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("security")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "security" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Shield className="h-4 w-4" />
-                  Безопасность
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("appearance")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "appearance" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Palette className="h-4 w-4" />
-                  Внешний вид
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("notifications")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "notifications" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Bell className="h-4 w-4" />
-                  Уведомления
-                </button>
-                
-                <button
-                  onClick={() => setActiveTab("data")}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                    activeTab === "data" 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <Download className="h-4 w-4" />
-                  Данные
-                </button>
-              </nav>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="space-y-6">
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Профиль</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Безопасность</span>
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              <span className="hidden sm:inline">Внешний вид</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Уведомления</span>
+            </TabsTrigger>
+            <TabsTrigger value="data" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Данные</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Содержимое выбранной вкладки */}
-        <div className="lg:col-span-3">
           {/* Профиль */}
-          {activeTab === "profile" && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Профиль пользователя</CardTitle>
-                  <CardDescription>
-                    Управление основной информацией профиля
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+          <TabsContent value="profile" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Профиль пользователя</CardTitle>
+                <CardDescription>
+                  Управление основной информацией профиля
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
                       <AvatarImage src={profile.avatar} alt={profile.name} />
@@ -295,9 +456,26 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <Button variant="outline" size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Изменить фото
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        id="avatar-upload"
+                        disabled={avatarLoading}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => document.getElementById('avatar-upload')?.click()}
+                        disabled={avatarLoading}
+                      >
+                        {avatarLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
+                        {avatarLoading ? "Загрузка..." : "Изменить фото"}
                       </Button>
                       <p className="text-xs text-muted-foreground mt-1">
                         JPG, GIF или PNG. Максимальный размер 1MB
@@ -370,12 +548,10 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          )}
+          </TabsContent>
 
           {/* Безопасность */}
-          {activeTab === "security" && (
-            <div className="space-y-6">
+          <TabsContent value="security" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Аутентификация</CardTitle>
@@ -393,7 +569,7 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                     </div>
                     <Switch
                       checked={security.twoFactorEnabled}
-                      onCheckedChange={(checked) => setSecurity({...security, twoFactorEnabled: checked})}
+                      onCheckedChange={handleTwoFactorToggle}
                     />
                   </div>
 
@@ -473,12 +649,10 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          )}
+          </TabsContent>
 
           {/* Внешний вид */}
-          {activeTab === "appearance" && (
-            <div className="space-y-6">
+          <TabsContent value="appearance" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Тема</CardTitle>
@@ -606,12 +780,10 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          )}
+          </TabsContent>
 
           {/* Уведомления */}
-          {activeTab === "notifications" && (
-            <div className="space-y-6">
+          <TabsContent value="notifications" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Email уведомления</CardTitle>
@@ -709,12 +881,10 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          )}
+          </TabsContent>
 
           {/* Данные */}
-          {activeTab === "data" && (
-            <div className="space-y-6">
+          <TabsContent value="data" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Резервное копирование</CardTitle>
@@ -730,9 +900,13 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                         Скачать все ваши пароли и настройки в зашифрованном файле
                       </p>
                     </div>
-                    <Button>
-                      <Download className="h-4 w-4 mr-2" />
-                      Экспорт
+                    <Button onClick={handleExportData} disabled={exportLoading}>
+                      {exportLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      {exportLoading ? "Экспорт..." : "Экспорт"}
                     </Button>
                   </div>
 
@@ -743,10 +917,28 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                         Импортировать пароли из файла резервной копии
                       </p>
                     </div>
-                    <Button variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Импорт
-                    </Button>
+                    <div>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportData}
+                        className="hidden"
+                        id="import-data"
+                        disabled={importLoading}
+                      />
+                      <Button 
+                        variant="outline"
+                        onClick={() => document.getElementById('import-data')?.click()}
+                        disabled={importLoading}
+                      >
+                        {importLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        {importLoading ? "Импорт..." : "Импорт"}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -773,10 +965,67 @@ export function SettingsPage({ onBack, user }: SettingsPageProps) {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Модальное окно настройки 2FA */}
+      <Dialog open={twoFactorModalOpen} onOpenChange={setTwoFactorModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Настройка двухфакторной аутентификации</DialogTitle>
+            <DialogDescription>
+              Отсканируйте QR-код в приложении для двухфакторной аутентификации (Google Authenticator, Authy и т.д.)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {twoFactorData.qrCodeUrl && (
+              <div className="flex justify-center">
+                <div className="bg-white p-4 rounded-lg">
+                  {/* В реальном приложении здесь будет QR-код */}
+                  <div className="w-48 h-48 bg-gray-200 rounded flex items-center justify-center">
+                    <span className="text-sm text-gray-600">QR-код для 2FA</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {twoFactorData.secret && (
+              <div className="space-y-2">
+                <Label>Секретный ключ</Label>
+                <div className="flex items-center gap-2">
+                  <Input value={twoFactorData.secret} readOnly />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(twoFactorData.secret || '');
+                      toast({
+                        title: "Скопировано",
+                        description: "Секретный ключ скопирован в буфер обмена",
+                      });
+                    }}
+                  >
+                    Копировать
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Сохраните этот ключ в надежном месте. Он понадобится для восстановления доступа к аккаунту.
+                </p>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTwoFactorModalOpen(false)}>
+                Закрыть
+              </Button>
+              <Button onClick={() => setTwoFactorModalOpen(false)}>
+                Готово
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

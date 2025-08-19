@@ -173,6 +173,10 @@ export function SidebarMenu({
     console.log("SidebarMenu: State updated - folders:", folders.length, "companies:", companies.length, "loading:", loading);
   }, [folders, companies, loading]);
 
+  // Проверка прав администратора (в реальном приложении здесь должна быть проверка ролей)
+  const [isAdmin, setIsAdmin] = useState(true); // Временно установлено в true для демонстрации
+  
+  // Основные пункты меню
   const menuItems = [
     { 
       id: "all-passwords", 
@@ -204,6 +208,7 @@ export function SidebarMenu({
     },
   ];
 
+  // Пункты меню для нижнего раздела
   const accountItems = [
     { id: "administration", label: "Администрирование", icon: Shield },
     { id: "analytics", label: "Аналитика", icon: BarChart3 },
@@ -276,27 +281,18 @@ export function SidebarMenu({
   const handleAccountItemClick = (itemId: string) => {
     switch (itemId) {
       case "administration":
-        // Switch to administration view
         handleMenuItemClick("administration");
         break;
       case "analytics":
-        // Switch to analytics view
         handleMenuItemClick("analytics");
         break;
       case "account":
-        // Switch to account management view
         handleMenuItemClick("account-management");
         break;
       case "settings":
-        // Use onSettingsClick if provided, otherwise navigate to settings page
-        if (onSettingsClick) {
-          onSettingsClick();
-        } else {
-          router.push("/settings");
-        }
+        handleMenuItemClick("settings");
         break;
       case "logout":
-        // Handle logout
         console.log("Logout clicked");
         break;
     }
@@ -382,8 +378,8 @@ export function SidebarMenu({
 
             {/* Второй раздел - Папки */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between px-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-3 h-10">
+                <div className="flex items-center gap-3 flex-1">
                   <Collapsible open={foldersExpanded} onOpenChange={setFoldersExpanded}>
                     <CollapsibleTrigger asChild>
                       <Button
@@ -402,7 +398,7 @@ export function SidebarMenu({
                   <Button
                     variant="ghost"
                     className={cn(
-                      "justify-start h-8 px-0",
+                      "justify-start h-10 px-0 flex-1",
                       currentView === "folders-management" && "bg-secondary text-secondary-foreground"
                     )}
                     onClick={() => handleMenuItemClick("folders-management")}
@@ -422,9 +418,9 @@ export function SidebarMenu({
               <Collapsible open={foldersExpanded} onOpenChange={setFoldersExpanded}>
                 <CollapsibleContent className="space-y-1 mt-2">
                   {loading ? (
-                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Загрузка...</div>
+                    <div className="px-3 text-sm text-muted-foreground">Загрузка...</div>
                   ) : folders.length === 0 ? (
-                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Нет папок</div>
+                    <div className="px-3 text-sm text-muted-foreground">Нет папок</div>
                   ) : (
                     folders.map((folder) => {
                       const isActive = typeof currentView === 'object' && 
@@ -436,7 +432,7 @@ export function SidebarMenu({
                           <Button
                             variant="ghost"
                             className={cn(
-                              "flex-1 justify-start h-9 pl-8 pr-2 cursor-pointer",
+                              "flex-1 justify-start h-9 px-3 pr-2 cursor-pointer",
                               isActive && "bg-secondary text-secondary-foreground"
                             )}
                             onClick={() => handleFolderClick(folder)}
@@ -471,8 +467,8 @@ export function SidebarMenu({
 
             {/* Третий раздел - Предприятия */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between px-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-3 h-10">
+                <div className="flex items-center gap-3 flex-1">
                   <Collapsible open={companiesExpanded} onOpenChange={setCompaniesExpanded}>
                     <CollapsibleTrigger asChild>
                       <Button
@@ -491,7 +487,7 @@ export function SidebarMenu({
                   <Button
                     variant="ghost"
                     className={cn(
-                      "justify-start h-8 px-0",
+                      "justify-start h-10 px-0 flex-1",
                       currentView === "companies-management" && "bg-secondary text-secondary-foreground"
                     )}
                     onClick={() => handleMenuItemClick("companies-management")}
@@ -511,9 +507,9 @@ export function SidebarMenu({
               <Collapsible open={companiesExpanded} onOpenChange={setCompaniesExpanded}>
                 <CollapsibleContent className="space-y-1 mt-2">
                   {loading ? (
-                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Загрузка...</div>
+                    <div className="px-3 text-sm text-muted-foreground">Загрузка...</div>
                   ) : companies.length === 0 ? (
-                    <div className="pl-8 pr-3 text-sm text-muted-foreground">Нет предприятий</div>
+                    <div className="px-3 text-sm text-muted-foreground">Нет предприятий</div>
                   ) : (
                     companies.map((company) => {
                       const isActive = typeof currentView === 'object' && 
@@ -525,7 +521,7 @@ export function SidebarMenu({
                           <Button
                             variant="ghost"
                             className={cn(
-                              "flex-1 justify-start h-9 pl-8 pr-2 cursor-pointer",
+                              "flex-1 justify-start h-9 px-3 pr-2 cursor-pointer",
                               isActive && "bg-secondary text-secondary-foreground"
                             )}
                             onClick={() => handleCompanyClick(company)}
@@ -564,18 +560,45 @@ export function SidebarMenu({
         <div className="space-y-1">
           {accountItems.map((item) => {
             const Icon = item.icon;
+            // Скрываем административные пункты для не-администраторов
+            if ((item.id === "administration" || item.id === "analytics") && !isAdmin) {
+              return null;
+            }
+            
+            // Определяем активное состояние для пунктов меню
+            let isActive = false;
+            switch (item.id) {
+              case "administration":
+                isActive = currentView === "administration";
+                break;
+              case "analytics":
+                isActive = currentView === "analytics";
+                break;
+              case "account":
+                isActive = currentView === "account-management";
+                break;
+              case "settings":
+                isActive = currentView === "settings";
+                break;
+              default:
+                isActive = false;
+            }
+            
             return (
               <Button
                 key={item.id}
                 variant={item.variant === "destructive" ? "ghost" : "ghost"}
                 className={cn(
                   "w-full justify-start h-10 px-3 cursor-pointer",
+                  isActive && "bg-secondary text-secondary-foreground",
                   item.variant === "destructive" && "text-destructive hover:text-destructive hover:bg-destructive/10"
                 )}
                 onClick={() => handleAccountItemClick(item.id)}
               >
-                <Icon className="h-4 w-4 mr-3" />
-                <span className="text-sm">{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon className="h-4 w-4" />
+                  <span className="text-sm">{item.label}</span>
+                </div>
               </Button>
             );
           })}

@@ -100,7 +100,7 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
     numbers: 2,
     symbols: 2
   });
-  const [excludeAmbiguous, setExcludeAmbiguous] = useState(false);
+  const [excludeAmbiguous, setExcludeAmbiguous] = useState(true);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [lastSelectedFolder, setLastSelectedFolder] = useState<string>("");
   const [lastSelectedCompany, setLastSelectedCompany] = useState<string>("");
@@ -298,6 +298,9 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
   // Generate secure password using client-side crypto
   const handleGeneratePassword = () => {
     try {
+      console.log("PasswordModal: Generating password with options:", generatorOptions);
+      console.log("PasswordModal: Generator length:", generatorLength);
+      
       // Build character sets based on options
       let lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
       let uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -381,11 +384,16 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
       // Shuffle the password to mix required characters
       password = password.split('').sort(() => Math.random() - 0.5).join('');
       
+      console.log("PasswordModal: Generated password:", password ? "***" : "empty");
+      
       setFormData(prev => ({ ...prev, password }));
       
       // Validate password and update errors
       const errors = validatePassword(password);
       setPasswordErrors(errors);
+      
+      // Auto-show password when generated
+      setShowPassword(true);
     } catch (error) {
       console.error('Error generating password:', error);
       setPasswordErrors(['Ошибка генерации пароля']);
@@ -591,11 +599,12 @@ export function PasswordModal({ open, onOpenChange, password, mode = "create", o
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 px-3"
+                    className="h-9 px-3 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white hover:text-white"
                     onClick={handleGeneratePassword}
                     title="Сгенерировать пароль"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Сгенерировать
                   </Button>
                 </div>
                 

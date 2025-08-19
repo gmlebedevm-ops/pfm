@@ -8,12 +8,12 @@ import { PasswordModal } from "@/components/passwords/password-modal";
 import { AppLayout } from "@/components/app-layout";
 import { usePasswords } from "@/hooks/use-passwords";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CompactSettings } from "@/components/settings/compact-settings";
 import { FoldersManagement } from "@/components/folders/folders-management";
 import { AccountManagement } from "@/components/account/account-management";
 import { CompaniesManagement } from "@/components/companies/companies-management";
 import { AdministrationManagement } from "@/components/administration/administration-management";
 import { SecurityDashboard } from "@/components/analytics/security-dashboard";
+import { SettingsPage as SettingsComponent } from "@/components/settings/settings-page";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -37,7 +37,6 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPassword, setEditingPassword] = useState<any>(null);
   const [isInitialized, setIsInitialized] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
@@ -100,7 +99,7 @@ export default function Home() {
   };
 
   const handleToggleSettings = () => {
-    setShowSettings(!showSettings);
+    setCurrentView("settings");
   };
 
   const handleEditFolder = (folderId: string) => {
@@ -113,15 +112,15 @@ export default function Home() {
     setCurrentView("companies-management");
   };
 
-  // Сбрасывать настройки при смене представления
+  // Reset selected folder ID when not in folders-management view
   useEffect(() => {
-    console.log("Home: currentView changed, hiding settings");
-    setShowSettings(false);
-    // Reset selected folder ID when not in folders-management view
     if (currentView !== "folders-management") {
       setSelectedFolderId(null);
     }
-    // Reset selected company ID when not in companies-management view
+  }, [currentView]);
+
+  // Reset selected company ID when not in companies-management view
+  useEffect(() => {
     if (currentView !== "companies-management") {
       setSelectedCompanyId(null);
     }
@@ -155,12 +154,7 @@ export default function Home() {
       setCurrentView={setCurrentView}
       passwordsCount={getPasswordsCount()}
     >
-      {showSettings ? (
-        <CompactSettings 
-          user={session?.user || { name: 'Debug User', email: 'debug@example.com' }} 
-          onClose={handleToggleSettings}
-        />
-      ) : currentView === "folders-management" ? (
+      {currentView === "folders-management" ? (
         <FoldersManagement selectedFolderId={selectedFolderId || undefined} />
       ) : currentView === "account-management" ? (
         <AccountManagement />
@@ -170,6 +164,8 @@ export default function Home() {
         <AdministrationManagement />
       ) : currentView === "analytics" ? (
         <SecurityDashboard />
+      ) : currentView === "settings" ? (
+        <SettingsComponent user={session?.user} />
       ) : (
         <>
           <PasswordGrid 

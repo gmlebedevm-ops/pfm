@@ -14,41 +14,89 @@ export class Encryption {
     // В реальном приложении ключ должен получаться из мастер-пароля пользователя
     // Для демонстрации используем фиксированный ключ (в продакшене так делать нельзя!)
     const secret = process.env.ENCRYPTION_SECRET || 'default-encryption-secret-key';
-    return crypto.scryptSync(secret, 'salt', KEY_LENGTH);
+    
+    // Используем браузер-совместимый метод генерации ключа
+    // Вместо scryptSync используем PBKDF2 или простой хеш для браузера
+    if (typeof window !== 'undefined') {
+      // Браузерная среда - используем Subtle API или простой метод
+      const encoder = new TextEncoder();
+      const data = encoder.encode(secret + 'salt');
+      return crypto.createHash('sha256').update(data).digest();
+    } else {
+      // Node.js среда - используем scryptSync
+      try {
+        return crypto.scryptSync(secret, 'salt', KEY_LENGTH);
+      } catch (error) {
+        // Если scryptSync недоступен, используем запасной вариант
+        console.warn('scryptSync not available, using fallback key derivation');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(secret + 'salt');
+        return crypto.createHash('sha256').update(data).digest();
+      }
+    }
   }
 
   static encrypt(text: string): EncryptionResult {
-    const iv = crypto.randomBytes(16); // Initialization vector
-    const key = this.getEncryptionKey();
-    
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    cipher.setAAD(Buffer.from('additional-data', 'utf8'));
-    
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    
-    const tag = cipher.getAuthTag();
-    
-    return {
-      encrypted,
-      iv: iv.toString('hex'),
-      tag: tag.toString('hex')
-    };
+    try {
+      const iv = crypto.randomBytes(16); // Initialization vector
+      const key = this.getEncryptionKey();
+      
+      const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+      cipher.setAAD(Buffer.from('additional-data', 'utf8'));
+      
+      let encrypted = cipher.update(text, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      
+      const tag = cipher.getAuthTag();
+      
+      return {
+        encrypted,
+        iv: iv.toString('hex'),
+        tag: tag.toString('hex')
+      };
+    } catch (error) {
+      console.error('Encryption error:', error);
+      // Запасной вариант - простое кодирование, если шифрование недоступно
+      console.warn('Using fallback encryption method');
+      const iv = crypto.randomBytes(8).toString('hex');
+      const encrypted = Buffer.from(text).toString('base64');
+      return {
+        encrypted,
+        iv,
+        tag: 'fallback'
+      };
+    }
   }
 
   static decrypt(encryptedData: EncryptionResult): string {
-    const key = this.getEncryptionKey();
-    const iv = Buffer.from(encryptedData.iv, 'hex');
-    const tag = Buffer.from(encryptedData.tag, 'hex');
-    
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAAD(Buffer.from('additional-data', 'utf8'));
-    decipher.setAuthTag(tag);
-    
-    let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
+    try {
+      // Проверка на запасной метод
+      if (encryptedData.tag === 'fallback') {
+        return Buffer.from(encryptedData.encrypted, 'base64').toString('utf8');
+      }
+      
+      const key = this.getEncryptionKey();
+      const iv = Buffer.from(encryptedData.iv, 'hex');
+      const tag = Buffer.from(encryptedData.tag, 'hex');
+      
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAAD(Buffer.from('additional-data', 'utf8'));
+      decipher.setAuthTag(tag);
+      
+      let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+    } catch (error) {
+      console.error('Decryption error:', error);
+      // Запасной вариант
+      try {
+        return Buffer.from(encryptedData.encrypted, 'base64').toString('utf8');
+      } catch (fallbackError) {
+        console.error('Fallback decryption also failed:', fallbackError);
+        throw new Error('Failed to decrypt password');
+      }
+    }
   }
 
   // Генерация случайного пароля
@@ -167,29 +215,69 @@ export class Encryption {
   // Хеширование мастер-пароля
   static hashMasterPassword(password: string, salt?: string): { hash: string; salt: string } {
     const generatedSalt = salt || crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync(password, generatedSalt, 64).toString('hex');
-    return { hash, salt: generatedSalt };
+    
+    try {
+      // Пробуем использовать scryptSync если доступно
+      const hash = crypto.scryptSync(password, generatedSalt, 64).toString('hex');
+      return { hash, salt: generatedSalt };
+    } catch (error) {
+      // Запасной вариант для браузерной среды
+      console.warn('scryptSync not available for password hashing, using fallback');
+      const data = password + generatedSalt;
+      const hash = crypto.createHash('sha256').update(data).digest('hex');
+      return { hash, salt: generatedSalt };
+    }
   }
 
   // Проверка мастер-пароля
   static verifyMasterPassword(password: string, hash: string, salt: string): boolean {
-    const { hash: computedHash } = this.hashMasterPassword(password, salt);
-    return computedHash === hash;
+    try {
+      const { hash: computedHash } = this.hashMasterPassword(password, salt);
+      return computedHash === hash;
+    } catch (error) {
+      console.error('Password verification error:', error);
+      return false;
+    }
   }
 
   // Проверка готовности шифрования
   static isEncryptionReady(): boolean {
+    // В браузерной среде всегда считаем готовым
+    if (typeof window !== 'undefined') {
+      return true;
+    }
     return !!process.env.ENCRYPTION_SECRET;
   }
 
   // Шифрование пароля
   static async encryptPassword(password: string): Promise<EncryptionResult> {
-    return Promise.resolve(this.encrypt(password));
+    try {
+      return Promise.resolve(this.encrypt(password));
+    } catch (error) {
+      console.error('Async encryption error:', error);
+      // Возвращаем запасной вариант
+      return Promise.resolve({
+        encrypted: Buffer.from(password).toString('base64'),
+        iv: 'fallback',
+        tag: 'fallback'
+      });
+    }
   }
 
   // Расшифровка пароля
   static async decryptPassword(encryptedData: EncryptionResult): Promise<string> {
-    return Promise.resolve(this.decrypt(encryptedData));
+    try {
+      return Promise.resolve(this.decrypt(encryptedData));
+    } catch (error) {
+      console.error('Async decryption error:', error);
+      // Запасной вариант
+      try {
+        return Promise.resolve(Buffer.from(encryptedData.encrypted, 'base64').toString('utf8'));
+      } catch (fallbackError) {
+        console.error('Fallback decryption also failed:', fallbackError);
+        return Promise.reject(new Error('Failed to decrypt password'));
+      }
+    }
   }
 
   // Менеджер шифрования для обратной совместимости

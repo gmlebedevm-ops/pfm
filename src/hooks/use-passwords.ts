@@ -22,7 +22,7 @@ export interface Password {
   isEncrypted?: boolean;
 }
 
-export type ViewType = "all" | "favorites" | "inbox" | "trash" | "folders-management" | "account-management" | "companies-management" | "administration" | "analytics" | { type: "folder"; folderId: string; folderName: string } | { type: "company"; companyId: string; companyName: string };
+export type ViewType = "all" | "favorites" | "inbox" | "trash" | "folders-management" | "account-management" | "companies-management" | "administration" | "analytics" | "settings" | { type: "folder"; folderId: string; folderName: string } | { type: "company"; companyId: string; companyName: string };
 
 export function usePasswords() {
   const [passwords, setPasswords] = useState<Password[]>([]);
@@ -100,7 +100,8 @@ export function usePasswords() {
       });
 
       if (response.data) {
-        await loadPasswords(); // Reload to get updated data
+        // Обновляем локальное состояние вместо полной перезагрузки
+        setPasswords(prev => prev.map(p => p.id === id ? response.data : p));
         toast.success(
           password.favorite 
             ? "Удалено из избранного" 
@@ -122,7 +123,8 @@ export function usePasswords() {
       });
 
       if (response.data) {
-        await loadPasswords(); // Reload to get updated data
+        // Обновляем локальное состояние вместо полной перезагрузки
+        setPasswords(prev => prev.map(p => p.id === id ? response.data : p));
         toast.success("Перемещено в корзину");
       } else if (response.error) {
         toast.error('Ошибка перемещения в корзину');
@@ -140,7 +142,8 @@ export function usePasswords() {
       });
 
       if (response.data) {
-        await loadPasswords(); // Reload to get updated data
+        // Обновляем локальное состояние вместо полной перезагрузки
+        setPasswords(prev => prev.map(p => p.id === id ? response.data : p));
         toast.success("Восстановлено из корзины");
       } else if (response.error) {
         toast.error('Ошибка восстановления из корзины');
@@ -156,7 +159,8 @@ export function usePasswords() {
       const response = await apiClient.deletePassword(id);
 
       if (response.data !== undefined) {
-        await loadPasswords(); // Reload to get updated data
+        // Удаляем из локального состояния вместо полной перезагрузки
+        setPasswords(prev => prev.filter(p => p.id !== id));
         toast.success("Удалено окончательно");
       } else if (response.error) {
         toast.error('Ошибка удаления пароля');
@@ -178,7 +182,9 @@ export function usePasswords() {
         );
         
         await Promise.all(restorePromises);
-        await loadPasswords(); // Reload to get updated data
+        
+        // Обновляем локальное состояние - убираем отметку о корзине у всех паролей
+        setPasswords(prev => prev.map(p => ({ ...p, inTrash: false })));
         toast.success("Все пароли восстановлены из корзины");
       }
     } catch (error) {
@@ -198,7 +204,9 @@ export function usePasswords() {
         );
         
         await Promise.all(deletePromises);
-        await loadPasswords(); // Reload to get updated data
+        
+        // Удаляем все пароли из корзины из локального состояния
+        setPasswords(prev => prev.filter(p => !p.inTrash));
         toast.success("Корзина очищена");
       }
     } catch (error) {
@@ -212,7 +220,8 @@ export function usePasswords() {
       const response = await apiClient.createPassword(password);
 
       if (response.data) {
-        await loadPasswords(); // Reload to get updated data
+        // Обновляем локальное состояние вместо полной перезагрузки
+        setPasswords(prev => [response.data, ...prev]);
         toast.success("Пароль добавлен");
       } else if (response.error) {
         toast.error('Ошибка добавления пароля');
@@ -228,7 +237,8 @@ export function usePasswords() {
       const response = await apiClient.updatePassword(id, updatedPassword);
 
       if (response.data) {
-        await loadPasswords(); // Reload to get updated data
+        // Обновляем локальное состояние вместо полной перезагрузки
+        setPasswords(prev => prev.map(p => p.id === id ? response.data : p));
         toast.success("Пароль обновлен");
       } else if (response.error) {
         toast.error('Ошибка обновления пароля');
